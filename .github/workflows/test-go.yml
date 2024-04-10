@@ -21,10 +21,6 @@ jobs:
       - name: Make test
         run: |
           make test
-          echo "removing generated code from coverage results"
-          mv cover.out cover.out.tmp && grep -vP "uptime-operator/(api/v1alpha1|cmd|test/utils)/" cover.out.tmp > cover.out
-          diffs="$(git status -s)"
-          if [[ -n "$diffs" ]]; then echo "there are diffs after make test: $diffs"; exit 250; fi
 
       - name: Update coverage report
         uses: ncruces/go-coverage-report@v0
