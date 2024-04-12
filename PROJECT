@@ -9,10 +9,12 @@ projectName: uptime-operator
 repo: github.com/PDOK/uptime-operator
 resources:
 - controller: true
+  domain: pdok.nl
   group: traefik.containo.us
   kind: IngressRoute
   version: v1alpha1
 - controller: true
+  domain: pdok.nl
   group: traefik.io
   kind: IngressRoute
   version: v1alpha1

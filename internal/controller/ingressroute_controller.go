@@ -27,49 +27,97 @@ package controller
 import (
 	"context"
 
+	"github.com/PDOK/uptime-operator/internal/model"
+	"github.com/PDOK/uptime-operator/internal/provider"
+	traefikcontainous "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikcontainous/v1alpha1"
+	traefikio "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	traefikcontainous "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikcontainous/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// IngressRouteReconciler reconciles a IngressRoute object
+// IngressRouteReconciler reconciles Traefik IngressRoutes with an uptime monitoring (SaaS) provider
 type IngressRouteReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme         *runtime.Scheme
+	UptimeProvider provider.UptimeProvider
 }
 
-//+kubebuilder:rbac:groups=traefik.containo.us,resources=ingressroutes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=traefik.containo.us,resources=ingressroutes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=traefik.containo.us,resources=ingressroutes,verbs=get;list;watch
 //+kubebuilder:rbac:groups=traefik.containo.us,resources=ingressroutes/finalizers,verbs=update
-//+kubebuilder:rbac:groups=traefik.io,resources=ingressroutes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=traefik.io,resources=ingressroutes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=traefik.io,resources=ingressroutes,verbs=get;list;watch
 //+kubebuilder:rbac:groups=traefik.io,resources=ingressroutes/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the IngressRoute object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *IngressRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-	logger.Info("hello world")
-
-	// TODO(user): your logic here
-
+	annotations, err := r.getAnnotations(ctx, req)
+	if err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	r.syncWithUptimeProvider(ctx, annotations)
 	return ctrl.Result{}, nil
+}
+
+func (r *IngressRouteReconciler) getAnnotations(ctx context.Context, req ctrl.Request) (map[string]string, error) {
+	var annotations map[string]string
+
+	// first reconcile on "traefik.containo.us/v1alpha1" ingress
+	ingressContainous := &traefikcontainous.IngressRoute{}
+	if err := r.Get(ctx, req.NamespacedName, ingressContainous); err != nil {
+		// not found, now reconcile on "traefik.io/v1alpha1" ingress
+		ingressIo := &traefikio.IngressRoute{}
+		if err = r.Get(ctx, req.NamespacedName, ingressIo); err != nil {
+			// still not found, handle error
+			logger := log.FromContext(ctx)
+			if apierrors.IsNotFound(err) {
+				logger.Info("IngressRoute resource not found", "name", req.NamespacedName)
+			} else {
+				logger.Error(err, "unable to fetch IngressRoute resource", "error", err)
+			}
+			return nil, err
+		} else {
+			annotations = ingressIo.Annotations
+		}
+	} else {
+		annotations = ingressContainous.Annotations
+	}
+	return annotations, nil
+}
+
+func (r *IngressRouteReconciler) syncWithUptimeProvider(ctx context.Context, annotations map[string]string) {
+	logger := log.FromContext(ctx)
+	check := model.NewUptimeCheck(annotations)
+	if check != nil {
+		logger.Info("syncing uptime check with id", "id", check.ID)
+		err := r.UptimeProvider.CreateOrUpdateCheck(*check)
+		if err != nil {
+			logger.Error(err, "failed syncing uptime check", "error", err)
+		}
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	preCondition := predicate.Or(predicate.GenerationChangedPredicate{}, predicate.AnnotationChangedPredicate{})
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&traefikcontainous.IngressRoute{}).
-		//For(&traefikiov1alpha1.IngressRoute{}).
+		Named("uptime-operator").
+		Watches(
+			&traefikcontainous.IngressRoute{}, // watch "traefik.containo.us/v1alpha1" ingresses
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(preCondition)).
+		Watches(
+			&traefikio.IngressRoute{}, // watch "traefik.io/v1alpha1" ingresses
+			&handler.EnqueueRequestForObject{},
+			builder.WithPredicates(preCondition)).
 		Complete(r)
 }
