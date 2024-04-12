@@ -9,50 +9,26 @@ rules:
   resources:
   - ingressroutes
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - traefik.containo.us
   resources:
   - ingressroutes/finalizers
   verbs:
-  - update
-- apiGroups:
-  - traefik.containo.us
-  resources:
-  - ingressroutes/status
-  verbs:
-  - get
-  - patch
   - update
 - apiGroups:
   - traefik.io
   resources:
   - ingressroutes
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - traefik.io
   resources:
   - ingressroutes/finalizers
   verbs:
-  - update
-- apiGroups:
-  - traefik.io
-  resources:
-  - ingressroutes/status
-  verbs:
-  - get
-  - patch
   - update
