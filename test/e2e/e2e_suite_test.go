@@ -35,6 +35,6 @@ import (
 // Run e2e tests using the Ginkgo runner.
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
-	fmt.Fprintf(GinkgoWriter, "Starting ogcapi-operator suite\n")
+	fmt.Fprintf(GinkgoWriter, "Starting uptime-operator suite\n")
 	RunSpecs(t, "e2e suite")
 }

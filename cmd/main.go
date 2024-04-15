@@ -22,6 +22,9 @@ import (
 	"os"
 
 	"github.com/PDOK/uptime-operator/internal/provider"
+	"github.com/PDOK/uptime-operator/internal/util"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -60,15 +63,18 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var namespaces util.SliceFlag
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", false,
-		"If set the metrics endpoint is served securely")
+		"If set the metrics endpoint is served securely.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
-		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+		"If set, HTTP/2 will be enabled for the metrics and webhook servers.")
+	flag.Var(&namespaces, "namespace", "Namespace(s) to watch for changes."+
+		"Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -88,7 +94,7 @@ func main() {
 		c.NextProtos = []string{"http/1.1"}
 	}
 
-	tlsOpts := []func(*tls.Config){}
+	var tlsOpts []func(*tls.Config)
 	if !enableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
@@ -97,7 +103,7 @@ func main() {
 		TLSOpts: tlsOpts,
 	})
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	managerOpts := ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
 			BindAddress:   metricsAddr,
@@ -119,7 +125,17 @@ func main() {
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
-	})
+	}
+
+	if len(namespaces) > 0 {
+		namespacesToWatch := make(map[string]cache.Config)
+		for _, namespace := range namespaces {
+			namespacesToWatch[namespace] = cache.Config{}
+		}
+		managerOpts.Cache.DefaultNamespaces = namespacesToWatch
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOpts)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
