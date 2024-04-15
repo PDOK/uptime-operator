@@ -57,6 +57,7 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+//nolint:funlen
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool

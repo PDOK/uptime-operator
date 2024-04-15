@@ -68,8 +68,6 @@ func (r *IngressRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request
 }
 
 func (r *IngressRouteReconciler) getAnnotations(ctx context.Context, req ctrl.Request) (map[string]string, error) {
-	var annotations map[string]string
-
 	// first reconcile on "traefik.containo.us/v1alpha1" ingress
 	ingressContainous := &traefikcontainous.IngressRoute{}
 	if err := r.Get(ctx, req.NamespacedName, ingressContainous); err != nil {
@@ -84,13 +82,10 @@ func (r *IngressRouteReconciler) getAnnotations(ctx context.Context, req ctrl.Re
 				logger.Error(err, "unable to fetch IngressRoute resource", "error", err)
 			}
 			return nil, err
-		} else {
-			annotations = ingressIo.Annotations
 		}
-	} else {
-		annotations = ingressContainous.Annotations
+		return ingressIo.Annotations, nil
 	}
-	return annotations, nil
+	return ingressContainous.Annotations, nil
 }
 
 func (r *IngressRouteReconciler) syncWithUptimeProvider(ctx context.Context, annotations map[string]string) {

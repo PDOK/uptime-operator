@@ -4,9 +4,9 @@ import "strings"
 
 const (
 	annotationBase              = "uptime.pdok.nl/"
-	annotationId                = annotationBase + "id"
+	annotationID                = annotationBase + "id"
 	annotationName              = annotationBase + "name"
-	annotationUrl               = annotationBase + "url"
+	annotationUURL              = annotationBase + "url"
 	annotationTags              = annotationBase + "tags"
 	annotationRequestHeaders    = annotationBase + "request-headers"
 	annotationStringContains    = annotationBase + "response-check-for-string-contains"
@@ -24,14 +24,14 @@ type UptimeCheck struct {
 }
 
 func NewUptimeCheck(annotations map[string]string) *UptimeCheck {
-	id, ok := annotations[annotationId]
+	id, ok := annotations[annotationID]
 	if !ok {
 		return nil
 	}
 	return &UptimeCheck{
 		ID:                id,
 		Name:              annotations[annotationName],
-		URL:               annotations[annotationUrl],
+		URL:               annotations[annotationUURL],
 		Tags:              strings.Split(annotations[annotationTags], ","),
 		RequestHeaders:    kvStringToMap(annotations[annotationRequestHeaders]),
 		StringContains:    annotations[annotationStringContains],

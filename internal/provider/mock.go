@@ -25,8 +25,8 @@ func (m *MockUptimeProvider) HasCheck(check model.UptimeCheck) bool {
 func (m *MockUptimeProvider) CreateOrUpdateCheck(check model.UptimeCheck) error {
 	m.checks[check.ID] = check
 
-	checkJson, _ := json.Marshal(check)
-	log.Printf("created or updated check %s\n", checkJson)
+	checkJSON, _ := json.Marshal(check)
+	log.Printf("created or updated check %s\n", checkJSON)
 
 	return nil
 }
@@ -34,8 +34,8 @@ func (m *MockUptimeProvider) CreateOrUpdateCheck(check model.UptimeCheck) error 
 func (m *MockUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
 	delete(m.checks, check.ID)
 
-	checkJson, _ := json.Marshal(check)
-	log.Printf("deleted check %s\n", checkJson)
+	checkJSON, _ := json.Marshal(check)
+	log.Printf("deleted check %s\n", checkJSON)
 
 	return nil
 }

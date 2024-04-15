@@ -25,7 +25,7 @@ SOFTWARE.
 package controller
 
 import (
-	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo/v2" //nolint:revive // ginkgo bdd
 )
 
 var _ = Describe("IngressRoute Controller", func() {
