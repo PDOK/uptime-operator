@@ -36,6 +36,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -59,6 +60,10 @@ type IngressRouteReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *IngressRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	err := r.checkForDeletion(ctx, req)
+	if err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 	annotations, err := r.getAnnotations(ctx, req)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -88,6 +93,60 @@ func (r *IngressRouteReconciler) getAnnotations(ctx context.Context, req ctrl.Re
 	return ingressContainous.Annotations, nil
 }
 
+func (r *IngressRouteReconciler) checkForDeletion(ctx context.Context, req ctrl.Request) error {
+	// first reconcile on "traefik.containo.us/v1alpha1" ingress
+	ingressContainous := &traefikcontainous.IngressRoute{}
+	if err := r.Get(ctx, req.NamespacedName, ingressContainous); err != nil {
+		// not found, now reconcile on "traefik.io/v1alpha1" ingress
+		ingressIo := &traefikio.IngressRoute{}
+		if err = r.Get(ctx, req.NamespacedName, ingressIo); err != nil {
+			return nil
+		}
+		finalizerName := "uptime-operator." + ingressIo.Name + "/finalizer"
+		shouldContinue, err := finalizeIfNecessary(ctx, r.Client, ingressIo, finalizerName, func() error {
+			r.deleteWithUptimeProvider(ctx, ingressIo.Annotations)
+			return nil
+		})
+		if !shouldContinue || err != nil {
+			return err
+		}
+	}
+	finalizerName := "uptime-operator." + ingressContainous.Name + "/finalizer"
+	shouldContinue, err := finalizeIfNecessary(ctx, r.Client, ingressContainous, finalizerName, func() error {
+		r.deleteWithUptimeProvider(ctx, ingressContainous.Annotations)
+		return nil
+	})
+	if !shouldContinue || err != nil {
+		return err
+	}
+	return nil
+}
+
+func finalizeIfNecessary(ctx context.Context, c client.Client, obj client.Object, finalizerName string, finalizer func() error) (shouldContinue bool, err error) {
+	// not under deletion, ensure finalizer annotation
+	if obj.GetDeletionTimestamp().IsZero() {
+		if !controllerutil.ContainsFinalizer(obj, finalizerName) {
+			controllerutil.AddFinalizer(obj, finalizerName)
+			err = c.Update(ctx, obj)
+			return false, err
+		}
+		return true, nil
+	}
+
+	// under deletion but not our finalizer annotation, do nothing
+	if !controllerutil.ContainsFinalizer(obj, finalizerName) {
+		return false, nil
+	}
+
+	// run finalizer and remove annotation
+	if err = finalizer(); err != nil {
+		return false, err
+	}
+	controllerutil.RemoveFinalizer(obj, finalizerName)
+	err = c.Update(ctx, obj)
+	return false, err
+}
+
 func (r *IngressRouteReconciler) syncWithUptimeProvider(ctx context.Context, annotations map[string]string) {
 	logger := log.FromContext(ctx)
 	check := model.NewUptimeCheck(annotations)
@@ -96,6 +155,18 @@ func (r *IngressRouteReconciler) syncWithUptimeProvider(ctx context.Context, ann
 		err := r.UptimeProvider.CreateOrUpdateCheck(*check)
 		if err != nil {
 			logger.Error(err, "failed syncing uptime check", "error", err)
+		}
+	}
+}
+
+func (r *IngressRouteReconciler) deleteWithUptimeProvider(ctx context.Context, annotations map[string]string) {
+	logger := log.FromContext(ctx)
+	check := model.NewUptimeCheck(annotations)
+	if check != nil {
+		logger.Info("deleting uptime check with id", "id", check.ID)
+		err := r.UptimeProvider.DeleteCheck(*check)
+		if err != nil {
+			logger.Error(err, "failed deleting uptime check", "error", err)
 		}
 	}
 }
