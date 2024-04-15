@@ -1,16 +1,22 @@
 package model
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 const (
 	annotationBase              = "uptime.pdok.nl/"
 	annotationID                = annotationBase + "id"
 	annotationName              = annotationBase + "name"
-	annotationUURL              = annotationBase + "url"
+	annotationURL               = annotationBase + "url"
 	annotationTags              = annotationBase + "tags"
 	annotationRequestHeaders    = annotationBase + "request-headers"
 	annotationStringContains    = annotationBase + "response-check-for-string-contains"
 	annotationStringNotContains = annotationBase + "response-check-for-string-not-contains"
+
+	// Indicate to humans that the given check is managed by the operator.
+	tagManagedBy = "managed-by-uptime-operator"
 )
 
 type UptimeCheck struct {
@@ -28,15 +34,19 @@ func NewUptimeCheck(annotations map[string]string) *UptimeCheck {
 	if !ok {
 		return nil
 	}
-	return &UptimeCheck{
+	check := &UptimeCheck{
 		ID:                id,
 		Name:              annotations[annotationName],
-		URL:               annotations[annotationUURL],
-		Tags:              strings.Split(annotations[annotationTags], ","),
+		URL:               annotations[annotationURL],
+		Tags:              stringToSlice(annotations[annotationTags]),
 		RequestHeaders:    kvStringToMap(annotations[annotationRequestHeaders]),
 		StringContains:    annotations[annotationStringContains],
 		StringNotContains: annotations[annotationStringNotContains],
 	}
+	if !slices.Contains(check.Tags, tagManagedBy) {
+		check.Tags = append(check.Tags, tagManagedBy)
+	}
+	return check
 }
 
 func kvStringToMap(s string) map[string]string {
@@ -47,6 +57,15 @@ func kvStringToMap(s string) map[string]string {
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 		result[key] = value
+	}
+	return result
+}
+
+func stringToSlice(s string) []string {
+	var result []string
+	splits := strings.Split(s, ",")
+	for _, part := range splits {
+		result = append(result, strings.TrimSpace(part))
 	}
 	return result
 }
