@@ -1,4 +1,4 @@
-package provider
+package service
 
 import (
 	"encoding/json"
@@ -26,7 +26,7 @@ func (m *MockUptimeProvider) CreateOrUpdateCheck(check model.UptimeCheck) error 
 	m.checks[check.ID] = check
 
 	checkJSON, _ := json.Marshal(check)
-	log.Printf("created or updated check %s\n", checkJSON)
+	log.Printf("MOCK: created or updated check %s\n", checkJSON)
 
 	return nil
 }
@@ -35,7 +35,7 @@ func (m *MockUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
 	delete(m.checks, check.ID)
 
 	checkJSON, _ := json.Marshal(check)
-	log.Printf("deleted check %s\n", checkJSON)
+	log.Printf("MOCK: deleted check %s\n", checkJSON)
 
 	return nil
 }

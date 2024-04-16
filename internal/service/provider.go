@@ -1,4 +1,4 @@
-package provider
+package service
 
 import (
 	"github.com/PDOK/uptime-operator/internal/model"

@@ -6,7 +6,13 @@ import (
 )
 
 const (
+	OperatorName = "uptime-operator"
+
+	// Indicate to humans that the given check is managed by the operator.
+	tagManagedBy = "managed-by-" + OperatorName
+
 	AnnotationBase              = "uptime.pdok.nl"
+	AnnotationFinalizer         = AnnotationBase + "/finalizer"
 	annotationID                = AnnotationBase + "/id"
 	annotationName              = AnnotationBase + "/name"
 	annotationURL               = AnnotationBase + "/url"
@@ -14,9 +20,6 @@ const (
 	annotationRequestHeaders    = AnnotationBase + "/request-headers"
 	annotationStringContains    = AnnotationBase + "/response-check-for-string-contains"
 	annotationStringNotContains = AnnotationBase + "/response-check-for-string-not-contains"
-
-	// Indicate to humans that the given check is managed by the operator.
-	tagManagedBy = "managed-by-uptime-operator"
 )
 
 type UptimeCheck struct {

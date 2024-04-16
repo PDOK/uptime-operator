@@ -27,8 +27,8 @@ package controller
 import (
 	"context"
 
-	"github.com/PDOK/uptime-operator/internal/model"
-	"github.com/PDOK/uptime-operator/internal/provider"
+	m "github.com/PDOK/uptime-operator/internal/model"
+	"github.com/PDOK/uptime-operator/internal/service"
 	traefikcontainous "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikcontainous/v1alpha1"
 	traefikio "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -42,15 +42,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const operatorName = "uptime-operator"
-
-var finalizerName = model.AnnotationBase + "/finalizer"
-
 // IngressRouteReconciler reconciles Traefik IngressRoutes with an uptime monitoring (SaaS) provider
 type IngressRouteReconciler struct {
 	client.Client
-	Scheme         *runtime.Scheme
-	UptimeProvider provider.UptimeProvider
+	Scheme             *runtime.Scheme
+	UptimeCheckService *service.UptimeCheckService
 }
 
 //+kubebuilder:rbac:groups=traefik.containo.us,resources=ingressroutes,verbs=get;list;watch
@@ -68,14 +64,14 @@ func (r *IngressRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	shouldContinue, err := finalizeIfNecessary(ctx, r.Client, ingressRoute, finalizerName, func() error {
-		r.deleteWithUptimeProvider(ctx, ingressRoute.GetAnnotations())
+	shouldContinue, err := finalizeIfNecessary(ctx, r.Client, ingressRoute, m.AnnotationFinalizer, func() error {
+		r.UptimeCheckService.Mutate(ctx, m.Delete, ingressRoute.GetAnnotations())
 		return nil
 	})
 	if !shouldContinue || err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	r.syncWithUptimeProvider(ctx, ingressRoute.GetAnnotations())
+	r.UptimeCheckService.Mutate(ctx, m.CreateOrUpdate, ingressRoute.GetAnnotations())
 	return ctrl.Result{}, nil
 }
 
@@ -125,36 +121,12 @@ func finalizeIfNecessary(ctx context.Context, c client.Client, obj client.Object
 	return false, err
 }
 
-func (r *IngressRouteReconciler) syncWithUptimeProvider(ctx context.Context, annotations map[string]string) {
-	logger := log.FromContext(ctx)
-	check := model.NewUptimeCheck(annotations)
-	if check != nil {
-		logger.Info("syncing uptime check with id", "id", check.ID)
-		err := r.UptimeProvider.CreateOrUpdateCheck(*check)
-		if err != nil {
-			logger.Error(err, "failed syncing uptime check", "error", err)
-		}
-	}
-}
-
-func (r *IngressRouteReconciler) deleteWithUptimeProvider(ctx context.Context, annotations map[string]string) {
-	logger := log.FromContext(ctx)
-	check := model.NewUptimeCheck(annotations)
-	if check != nil {
-		logger.Info("deleting uptime check with id", "id", check.ID)
-		err := r.UptimeProvider.DeleteCheck(*check)
-		if err != nil {
-			logger.Error(err, "failed deleting uptime check", "error", err)
-		}
-	}
-}
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	preCondition := predicate.Or(predicate.GenerationChangedPredicate{}, predicate.AnnotationChangedPredicate{})
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Named(operatorName).
+		Named(m.OperatorName).
 		Watches(
 			&traefikcontainous.IngressRoute{}, // watch "traefik.containo.us/v1alpha1" ingresses
 			&handler.EnqueueRequestForObject{},
