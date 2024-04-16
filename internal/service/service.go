@@ -5,13 +5,12 @@ import (
 	"fmt"
 
 	m "github.com/PDOK/uptime-operator/internal/model"
-	"github.com/PDOK/uptime-operator/internal/util"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type UptimeCheckService struct {
 	provider UptimeProvider
-	slack    *util.Slack
+	slack    *Slack
 }
 
 func New(provider string, slackToken string, slackChannel string) *UptimeCheckService {
@@ -22,9 +21,9 @@ func New(provider string, slackToken string, slackChannel string) *UptimeCheckSe
 		// TODO add new case(s) for actual uptime monitoring SaaS providers
 	}
 
-	var slack *util.Slack
+	var slack *Slack
 	if slackToken != "" && slackChannel != "" {
-		slack = util.NewSlack(slackToken, slackChannel)
+		slack = NewSlack(slackToken, slackChannel)
 	}
 
 	return &UptimeCheckService{
