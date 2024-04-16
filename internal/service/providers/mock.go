@@ -5,14 +5,13 @@ import (
 	"log"
 
 	"github.com/PDOK/uptime-operator/internal/model"
-	"github.com/PDOK/uptime-operator/internal/service"
 )
 
 type MockUptimeProvider struct {
 	checks map[string]model.UptimeCheck
 }
 
-func NewMockUptimeProvider() service.UptimeProvider {
+func NewMockUptimeProvider() *MockUptimeProvider {
 	return &MockUptimeProvider{
 		checks: make(map[string]model.UptimeCheck),
 	}
