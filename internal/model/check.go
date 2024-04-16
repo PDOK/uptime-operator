@@ -6,14 +6,14 @@ import (
 )
 
 const (
-	annotationBase              = "uptime.pdok.nl/"
-	annotationID                = annotationBase + "id"
-	annotationName              = annotationBase + "name"
-	annotationURL               = annotationBase + "url"
-	annotationTags              = annotationBase + "tags"
-	annotationRequestHeaders    = annotationBase + "request-headers"
-	annotationStringContains    = annotationBase + "response-check-for-string-contains"
-	annotationStringNotContains = annotationBase + "response-check-for-string-not-contains"
+	AnnotationBase              = "uptime.pdok.nl"
+	annotationID                = AnnotationBase + "/id"
+	annotationName              = AnnotationBase + "/name"
+	annotationURL               = AnnotationBase + "/url"
+	annotationTags              = AnnotationBase + "/tags"
+	annotationRequestHeaders    = AnnotationBase + "/request-headers"
+	annotationStringContains    = AnnotationBase + "/response-check-for-string-contains"
+	annotationStringNotContains = AnnotationBase + "/response-check-for-string-not-contains"
 
 	// Indicate to humans that the given check is managed by the operator.
 	tagManagedBy = "managed-by-uptime-operator"

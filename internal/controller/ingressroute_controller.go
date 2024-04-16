@@ -42,6 +42,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
+const operatorName = "uptime-operator"
+
+var finalizerName = model.AnnotationBase + "/finalizer"
+
 // IngressRouteReconciler reconciles Traefik IngressRoutes with an uptime monitoring (SaaS) provider
 type IngressRouteReconciler struct {
 	client.Client
@@ -60,23 +64,26 @@ type IngressRouteReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *IngressRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	err := r.checkForDeletion(ctx, req)
+	ingressRoute, err := r.getIngressRoute(ctx, req)
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	annotations, err := r.getAnnotations(ctx, req)
-	if err != nil {
+	shouldContinue, err := finalizeIfNecessary(ctx, r.Client, ingressRoute, finalizerName, func() error {
+		r.deleteWithUptimeProvider(ctx, ingressRoute.GetAnnotations())
+		return nil
+	})
+	if !shouldContinue || err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	r.syncWithUptimeProvider(ctx, annotations)
+	r.syncWithUptimeProvider(ctx, ingressRoute.GetAnnotations())
 	return ctrl.Result{}, nil
 }
 
-func (r *IngressRouteReconciler) getAnnotations(ctx context.Context, req ctrl.Request) (map[string]string, error) {
-	// first reconcile on "traefik.containo.us/v1alpha1" ingress
+func (r *IngressRouteReconciler) getIngressRoute(ctx context.Context, req ctrl.Request) (client.Object, error) {
+	// first try getting "traefik.containo.us/v1alpha1" ingress
 	ingressContainous := &traefikcontainous.IngressRoute{}
 	if err := r.Get(ctx, req.NamespacedName, ingressContainous); err != nil {
-		// not found, now reconcile on "traefik.io/v1alpha1" ingress
+		// not found, now try getting "traefik.io/v1alpha1" ingress
 		ingressIo := &traefikio.IngressRoute{}
 		if err = r.Get(ctx, req.NamespacedName, ingressIo); err != nil {
 			// still not found, handle error
@@ -88,38 +95,9 @@ func (r *IngressRouteReconciler) getAnnotations(ctx context.Context, req ctrl.Re
 			}
 			return nil, err
 		}
-		return ingressIo.Annotations, nil
+		return ingressIo, nil
 	}
-	return ingressContainous.Annotations, nil
-}
-
-func (r *IngressRouteReconciler) checkForDeletion(ctx context.Context, req ctrl.Request) error {
-	// first reconcile on "traefik.containo.us/v1alpha1" ingress
-	ingressContainous := &traefikcontainous.IngressRoute{}
-	if err := r.Get(ctx, req.NamespacedName, ingressContainous); err != nil {
-		// not found, now reconcile on "traefik.io/v1alpha1" ingress
-		ingressIo := &traefikio.IngressRoute{}
-		if err = r.Get(ctx, req.NamespacedName, ingressIo); err != nil {
-			return nil
-		}
-		finalizerName := "uptime-operator." + ingressIo.Name + "/finalizer"
-		shouldContinue, err := finalizeIfNecessary(ctx, r.Client, ingressIo, finalizerName, func() error {
-			r.deleteWithUptimeProvider(ctx, ingressIo.Annotations)
-			return nil
-		})
-		if !shouldContinue || err != nil {
-			return err
-		}
-	}
-	finalizerName := "uptime-operator." + ingressContainous.Name + "/finalizer"
-	shouldContinue, err := finalizeIfNecessary(ctx, r.Client, ingressContainous, finalizerName, func() error {
-		r.deleteWithUptimeProvider(ctx, ingressContainous.Annotations)
-		return nil
-	})
-	if !shouldContinue || err != nil {
-		return err
-	}
-	return nil
+	return ingressContainous, nil
 }
 
 func finalizeIfNecessary(ctx context.Context, c client.Client, obj client.Object, finalizerName string, finalizer func() error) (shouldContinue bool, err error) {
@@ -176,7 +154,7 @@ func (r *IngressRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	preCondition := predicate.Or(predicate.GenerationChangedPredicate{}, predicate.AnnotationChangedPredicate{})
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("uptime-operator").
+		Named(operatorName).
 		Watches(
 			&traefikcontainous.IngressRoute{}, // watch "traefik.containo.us/v1alpha1" ingresses
 			&handler.EnqueueRequestForObject{},
