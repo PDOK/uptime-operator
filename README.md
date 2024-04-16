@@ -1,104 +1,78 @@
 # uptime-operator
-// TODO(user): Add simple overview of use/purpose
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+Kubernetes Operator to watch Traefik IngressRoute(s) and register these with a (SaaS) uptime monitoring provider to watch availability.
 
-## Getting Started
+## Annotations
 
-### Prerequisites
-- go version v1.21.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+Traefik `IngressRoute` resource should be annotated in order to successfully register an uptime check. For example:
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
-
-```sh
-make docker-build docker-push IMG=<some-registry>/uptime-operator:tag
+```yaml
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: my-sweet-route
+  annotations:
+    uptime.pdok.nl/id: "Random string to uniquely identify this check with the provider"
+    uptime.pdok.nl/name: "Logical name of the check"
+    uptime.pdok.nl/url: "https://site.example/service/wms/v1_0"
+    uptime.pdok.nl/tags: "metadata,separated,by,commas"
+    uptime.pdok.nl/request-headers: "Accept: application/json, Accept-Language: en"
+    uptime.pdok.nl/response-check-for-string-contains: "200 OK"
+    uptime.pdok.nl/response-check-for-string-not-contains: "NullPointerException"
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified. 
-And it is required to have access to pull the image from the working environment. 
-Make sure you have the proper permission to the registry if the above commands don’t work.
+## Run/usage
 
-**Install the CRDs into the cluster:**
-
-```sh
-make install
+```shell
+go build github.com/PDOK/uptime-operator/cmd -o manager
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+or
 
-```sh
-make deploy IMG=<some-registry>/uptime-operator:tag
+```shell
+docker build -t pdok/uptime-operator .
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin 
-privileges or be logged in as admin.
+```text
+USAGE:
+   <uptime-controller-manager> [OPTIONS]
 
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
-
-```sh
-kubectl apply -k config/samples/
+OPTIONS:
+  -enable-http2
+        If set, HTTP/2 will be enabled for the metrics and webhook servers.
+  -health-probe-bind-address string
+        The address the probe endpoint binds to. (default ":8081")
+  -kubeconfig string
+        Paths to a kubeconfig. Only required if out-of-cluster.
+  -leader-elect
+        Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
+  -metrics-bind-address string
+        The address the metric endpoint binds to. (default ":8080")
+  -metrics-secure
+        If set the metrics endpoint is served securely.
+  -namespace value
+        Namespace(s) to watch for changes. Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.
+  -slack-channel string
+        The Slack Channel ID for posting updates when uptime checks are mutated.
+  -slack-token string
+        The token required to access the given Slack channel.
+  -uptime-provider string
+        Name of the (SaaS) uptime monitoring provider to use. (default "mock")
+  -zap-devel
+        Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error) (default true)
+  -zap-encoder value
+        Zap log encoding (one of 'json' or 'console')
+  -zap-log-level value
+        Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
+  -zap-stacktrace-level value
+        Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
+  -zap-time-encoding value
+        Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
 ```
-
->**NOTE**: Ensure that the samples has default values to test it out.
-
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
-
-```sh
-kubectl delete -k config/samples/
-```
-
-**Delete the APIs(CRDs) from the cluster:**
-
-```sh
-make uninstall
-```
-
-**UnDeploy the controller from the cluster:**
-
-```sh
-make undeploy
-```
-
-## Project Distribution
-
-Following are the steps to build the installer and distribute this project to users.
-
-1. Build the installer for the image built and published in the registry:
-
-```sh
-make build-installer IMG=<some-registry>/uptime-operator:tag
-```
-
-NOTE: The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without
-its dependencies.
-
-2. Using the installer
-
-Users can just run kubectl apply -f <URL for YAML BUNDLE> to install the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/uptime-operator/<tag or branch>/dist/install.yaml
-```
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
 ## License
 
-```
+```text
 MIT License
 
 Copyright (c) 2024 Publieke Dienstverlening op de Kaart

@@ -67,6 +67,7 @@ func main() {
 	var namespaces util.SliceFlag
 	var slackChannel string
 	var slackToken string
+	var uptimeProvider string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -80,6 +81,7 @@ func main() {
 		"Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.")
 	flag.StringVar(&slackChannel, "slack-channel", "", "The Slack Channel ID for posting updates when uptime checks are mutated.")
 	flag.StringVar(&slackToken, "slack-token", "", "The token required to access the given Slack channel.")
+	flag.StringVar(&uptimeProvider, "uptime-provider", "mock", "Name of the (SaaS) uptime monitoring provider to use.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -149,7 +151,7 @@ func main() {
 	if err = (&controller.IngressRouteReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
-		UptimeCheckService: service.New("mock", slackToken, slackChannel),
+		UptimeCheckService: service.New(uptimeProvider, slackToken, slackChannel),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IngressRoute")
 		os.Exit(1)
