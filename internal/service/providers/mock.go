@@ -1,17 +1,18 @@
-package service
+package providers
 
 import (
 	"encoding/json"
 	"log"
 
 	"github.com/PDOK/uptime-operator/internal/model"
+	"github.com/PDOK/uptime-operator/internal/service"
 )
 
 type MockUptimeProvider struct {
 	checks map[string]model.UptimeCheck
 }
 
-func NewMockUptimeProvider() UptimeProvider {
+func NewMockUptimeProvider() service.UptimeProvider {
 	return &MockUptimeProvider{
 		checks: make(map[string]model.UptimeCheck),
 	}
