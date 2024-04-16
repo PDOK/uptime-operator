@@ -1,10 +1,10 @@
 # uptime-operator
 
-Kubernetes Operator to watch Traefik IngressRoute(s) and register these with a (SaaS) uptime monitoring provider.
+Kubernetes Operator to watch [Traefik](https://github.com/traefik/traefik) IngressRoute(s) and register these with a (SaaS) uptime monitoring provider.
 
 ## Annotations
 
-Traefik `IngressRoute` resource should be annotated in order to successfully register an uptime check. For example:
+Traefik `IngressRoute` resources should be annotated in order to successfully register an uptime check. For example:
 
 ```yaml
 apiVersion: traefik.containo.us/v1alpha1
@@ -20,6 +20,8 @@ metadata:
     uptime.pdok.nl/response-check-for-string-contains: "200 OK"
     uptime.pdok.nl/response-check-for-string-not-contains: "NullPointerException"
 ```
+
+Both `traefik.containo.us/v1alpha1` as well as `traefik.io/v1alpha1` resources are supported.
 
 ## Run/usage
 
@@ -69,6 +71,34 @@ OPTIONS:
   -zap-time-encoding value
         Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
 ```
+
+## Develop
+
+The project is written in Go and scaffolded with [kubebuilder](https://kubebuilder.io).
+
+### kubebuilder
+
+This operator was scaffolded with [kubebuilder](https://kubebuilder.io)
+
+Read the manual when you want/need to make changes.
+E.g. run `make test` before committing.
+
+### Linting
+
+Install [golangci-lint](https://golangci-lint.run/usage/install/) and run `golangci-lint run`
+from the root.
+(Don't run `make lint`, it uses an old version of golangci-lint.)
+
+## Misc
+
+### How to Contribute
+
+Make a pull request...
+
+### Contact
+
+Contacting the maintainers can be done through the issue tracker.
+
 
 ## License
 
