@@ -1,6 +1,6 @@
 # uptime-operator
 
-Kubernetes Operator to watch Traefik IngressRoute(s) and register these with a (SaaS) uptime monitoring provider to watch availability.
+Kubernetes Operator to watch Traefik IngressRoute(s) and register these with a (SaaS) uptime monitoring provider.
 
 ## Annotations
 
