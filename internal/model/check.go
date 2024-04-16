@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 )
@@ -32,15 +33,23 @@ type UptimeCheck struct {
 	StringNotContains string            `json:"string_not_contains"`
 }
 
-func NewUptimeCheck(annotations map[string]string) *UptimeCheck {
+func NewUptimeCheck(k8sObjName string, annotations map[string]string) (*UptimeCheck, error) {
 	id, ok := annotations[annotationID]
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("id annotation not found on ingress route: %s", k8sObjName)
+	}
+	name, ok := annotations[annotationName]
+	if !ok {
+		return nil, fmt.Errorf("name annotation not found on ingress route: %s", k8sObjName)
+	}
+	url, ok := annotations[annotationURL]
+	if !ok {
+		return nil, fmt.Errorf("url annotation not found on ingress route %s", k8sObjName)
 	}
 	check := &UptimeCheck{
 		ID:                id,
-		Name:              annotations[annotationName],
-		URL:               annotations[annotationURL],
+		Name:              name,
+		URL:               url,
 		Tags:              stringToSlice(annotations[annotationTags]),
 		RequestHeaders:    kvStringToMap(annotations[annotationRequestHeaders]),
 		StringContains:    annotations[annotationStringContains],
@@ -49,7 +58,7 @@ func NewUptimeCheck(annotations map[string]string) *UptimeCheck {
 	if !slices.Contains(check.Tags, tagManagedBy) {
 		check.Tags = append(check.Tags, tagManagedBy)
 	}
-	return check
+	return check, nil
 }
 
 func kvStringToMap(s string) map[string]string {

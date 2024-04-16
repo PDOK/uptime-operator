@@ -20,7 +20,7 @@ func NewSlack(token, channelID string) *Slack {
 	}
 }
 
-func (s *Slack) SendSlackMessage(ctx context.Context, message string) {
+func (s *Slack) Send(ctx context.Context, message string) {
 	logger := log.FromContext(ctx)
 	channelID, timestamp, err := s.client.PostMessageContext(ctx, s.channelID,
 		slack.MsgOptionText(message, false),

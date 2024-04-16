@@ -65,13 +65,13 @@ func (r *IngressRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	shouldContinue, err := finalizeIfNecessary(ctx, r.Client, ingressRoute, m.AnnotationFinalizer, func() error {
-		r.UptimeCheckService.Mutate(ctx, m.Delete, ingressRoute.GetAnnotations())
+		r.UptimeCheckService.Mutate(ctx, m.Delete, ingressRoute.GetName(), ingressRoute.GetAnnotations())
 		return nil
 	})
 	if !shouldContinue || err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	r.UptimeCheckService.Mutate(ctx, m.CreateOrUpdate, ingressRoute.GetAnnotations())
+	r.UptimeCheckService.Mutate(ctx, m.CreateOrUpdate, ingressRoute.GetName(), ingressRoute.GetAnnotations())
 	return ctrl.Result{}, nil
 }
 
