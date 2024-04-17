@@ -25,7 +25,7 @@ func (s *Slack) Send(ctx context.Context, message string) {
 	channelID, timestamp, err := s.client.PostMessageContext(ctx, s.channelID,
 		slack.MsgOptionText(message, false),
 		slack.MsgOptionUsername(model.OperatorName),
-		slack.MsgOptionIconEmoji(":robot_face:"),
+		slack.MsgOptionIconEmoji(":up:"),
 	)
 	if err != nil {
 		logger.Error(err, "failed to post Slack message", "message", message, "channel", channelID, "timestamp", timestamp)

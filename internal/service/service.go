@@ -32,8 +32,8 @@ func New(provider string, slackToken string, slackChannel string) *UptimeCheckSe
 	}
 }
 
-func (r *UptimeCheckService) Mutate(ctx context.Context, mutation m.Mutation, k8sObjName string, annotations map[string]string) {
-	check, err := m.NewUptimeCheck(k8sObjName, annotations)
+func (r *UptimeCheckService) Mutate(ctx context.Context, mutation m.Mutation, ingressName string, annotations map[string]string) {
+	check, err := m.NewUptimeCheck(ingressName, annotations)
 	if err != nil {
 		r.logAnnotationErr(ctx, err)
 		return
@@ -64,16 +64,16 @@ func (r *UptimeCheckService) logMutation(ctx context.Context, err error, mutatio
 			return
 		}
 		r.slack.Send(ctx, ":large_red_square: "+msg)
+		return
+	}
+	msg := fmt.Sprintf("%s of uptime check '%s' (id: %s) succeeded.", string(mutation), check.Name, check.ID)
+	log.FromContext(ctx).Info(msg)
+	if r.slack == nil {
+		return
+	}
+	if mutation == m.Delete {
+		r.slack.Send(ctx, ":warning: "+msg+".\n _Beware: a flood of these delete messages may indicate Traefik itself is down!_")
 	} else {
-		msg := fmt.Sprintf("%s of uptime check '%s' (id: %s) succeeded.", string(mutation), check.Name, check.ID)
-		log.FromContext(ctx).Info(msg)
-		if r.slack == nil {
-			return
-		}
-		if mutation == m.Delete {
-			r.slack.Send(ctx, ":warning: "+msg+".\n_Beware: a flood of these delete messages may indicate Traefik itself is down!_")
-		} else {
-			r.slack.Send(ctx, ":large_green_square: "+msg)
-		}
+		r.slack.Send(ctx, ":large_green_square: "+msg)
 	}
 }

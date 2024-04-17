@@ -33,18 +33,18 @@ type UptimeCheck struct {
 	StringNotContains string            `json:"string_not_contains"`
 }
 
-func NewUptimeCheck(k8sObjName string, annotations map[string]string) (*UptimeCheck, error) {
+func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeCheck, error) {
 	id, ok := annotations[annotationID]
 	if !ok {
-		return nil, fmt.Errorf("id annotation not found on ingress route: %s", k8sObjName)
+		return nil, fmt.Errorf("%s annotation not found on ingress route: %s", annotationID, ingressName)
 	}
 	name, ok := annotations[annotationName]
 	if !ok {
-		return nil, fmt.Errorf("name annotation not found on ingress route: %s", k8sObjName)
+		return nil, fmt.Errorf("%s annotation not found on ingress route: %s", annotationName, ingressName)
 	}
 	url, ok := annotations[annotationURL]
 	if !ok {
-		return nil, fmt.Errorf("url annotation not found on ingress route %s", k8sObjName)
+		return nil, fmt.Errorf("%s annotation not found on ingress route %s", annotationURL, ingressName)
 	}
 	check := &UptimeCheck{
 		ID:                id,
@@ -66,6 +66,9 @@ func kvStringToMap(s string) map[string]string {
 	result := make(map[string]string)
 	for _, kvPair := range kvPairs {
 		parts := strings.Split(kvPair, ":")
+		if len(parts) != 2 {
+			continue
+		}
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 		result[key] = value
