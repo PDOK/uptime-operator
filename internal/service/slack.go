@@ -21,13 +21,13 @@ func NewSlack(token, channelID string) *Slack {
 }
 
 func (s *Slack) Send(ctx context.Context, message string) {
-	logger := log.FromContext(ctx)
 	channelID, timestamp, err := s.client.PostMessageContext(ctx, s.channelID,
 		slack.MsgOptionText(message, false),
 		slack.MsgOptionUsername(model.OperatorName),
 		slack.MsgOptionIconEmoji(":up:"),
 	)
 	if err != nil {
-		logger.Error(err, "failed to post Slack message", "message", message, "channel", channelID, "timestamp", timestamp)
+		log.FromContext(ctx).Error(err, "failed to post Slack message",
+			"message", message, "channel", channelID, "timestamp", timestamp)
 	}
 }

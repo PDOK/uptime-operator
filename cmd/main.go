@@ -149,9 +149,12 @@ func main() {
 	}
 
 	if err = (&controller.IngressRouteReconciler{
-		Client:             mgr.GetClient(),
-		Scheme:             mgr.GetScheme(),
-		UptimeCheckService: service.New(uptimeProvider, slackToken, slackChannel),
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		UptimeCheckService: service.New(
+			service.WithProviderName(uptimeProvider),
+			service.WithSlack(slackToken, slackChannel),
+		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IngressRoute")
 		os.Exit(1)

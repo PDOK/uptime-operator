@@ -9,26 +9,45 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+type UptimeCheckOption func(*UptimeCheckService) *UptimeCheckService
+
 type UptimeCheckService struct {
 	provider UptimeProvider
 	slack    *Slack
 }
 
-func New(provider string, slackToken string, slackChannel string) *UptimeCheckService {
-	var p UptimeProvider
-	switch provider { //nolint:gocritic
-	case "mock":
-		p = providers.NewMockUptimeProvider()
-		// TODO add new case(s) for actual uptime monitoring SaaS providers
+func New(options ...UptimeCheckOption) *UptimeCheckService {
+	service := &UptimeCheckService{}
+	for _, option := range options {
+		service = option(service)
 	}
+	return service
+}
 
-	var slack *Slack
-	if slackToken != "" && slackChannel != "" {
-		slack = NewSlack(slackToken, slackChannel)
+func WithProvider(provider UptimeProvider) UptimeCheckOption {
+	return func(service *UptimeCheckService) *UptimeCheckService {
+		service.provider = provider
+		return service
 	}
-	return &UptimeCheckService{
-		slack:    slack,
-		provider: p,
+}
+
+func WithProviderName(provider string) UptimeCheckOption {
+	return func(service *UptimeCheckService) *UptimeCheckService {
+		switch provider { //nolint:gocritic
+		case "mock":
+			service.provider = providers.NewMockUptimeProvider()
+			// TODO add new case(s) for actual uptime monitoring SaaS providers
+		}
+		return service
+	}
+}
+
+func WithSlack(slackToken string, slackChannel string) UptimeCheckOption {
+	return func(service *UptimeCheckService) *UptimeCheckService {
+		if slackToken != "" && slackChannel != "" {
+			service.slack = NewSlack(slackToken, slackChannel)
+		}
+		return service
 	}
 }
 

@@ -14,13 +14,13 @@ const (
 
 	AnnotationBase              = "uptime.pdok.nl"
 	AnnotationFinalizer         = AnnotationBase + "/finalizer"
-	annotationID                = AnnotationBase + "/id"
-	annotationName              = AnnotationBase + "/name"
-	annotationURL               = AnnotationBase + "/url"
-	annotationTags              = AnnotationBase + "/tags"
-	annotationRequestHeaders    = AnnotationBase + "/request-headers"
-	annotationStringContains    = AnnotationBase + "/response-check-for-string-contains"
-	annotationStringNotContains = AnnotationBase + "/response-check-for-string-not-contains"
+	AnnotationID                = AnnotationBase + "/id"
+	AnnotationName              = AnnotationBase + "/name"
+	AnnotationURL               = AnnotationBase + "/url"
+	AnnotationTags              = AnnotationBase + "/tags"
+	AnnotationRequestHeaders    = AnnotationBase + "/request-headers"
+	AnnotationStringContains    = AnnotationBase + "/response-check-for-string-contains"
+	AnnotationStringNotContains = AnnotationBase + "/response-check-for-string-not-contains"
 )
 
 type UptimeCheck struct {
@@ -34,26 +34,26 @@ type UptimeCheck struct {
 }
 
 func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeCheck, error) {
-	id, ok := annotations[annotationID]
+	id, ok := annotations[AnnotationID]
 	if !ok {
-		return nil, fmt.Errorf("%s annotation not found on ingress route: %s", annotationID, ingressName)
+		return nil, fmt.Errorf("%s annotation not found on ingress route: %s", AnnotationID, ingressName)
 	}
-	name, ok := annotations[annotationName]
+	name, ok := annotations[AnnotationName]
 	if !ok {
-		return nil, fmt.Errorf("%s annotation not found on ingress route: %s", annotationName, ingressName)
+		return nil, fmt.Errorf("%s annotation not found on ingress route: %s", AnnotationName, ingressName)
 	}
-	url, ok := annotations[annotationURL]
+	url, ok := annotations[AnnotationURL]
 	if !ok {
-		return nil, fmt.Errorf("%s annotation not found on ingress route %s", annotationURL, ingressName)
+		return nil, fmt.Errorf("%s annotation not found on ingress route %s", AnnotationURL, ingressName)
 	}
 	check := &UptimeCheck{
 		ID:                id,
 		Name:              name,
 		URL:               url,
-		Tags:              stringToSlice(annotations[annotationTags]),
-		RequestHeaders:    kvStringToMap(annotations[annotationRequestHeaders]),
-		StringContains:    annotations[annotationStringContains],
-		StringNotContains: annotations[annotationStringNotContains],
+		Tags:              stringToSlice(annotations[AnnotationTags]),
+		RequestHeaders:    kvStringToMap(annotations[AnnotationRequestHeaders]),
+		StringContains:    annotations[AnnotationStringContains],
+		StringNotContains: annotations[AnnotationStringNotContains],
 	}
 	if !slices.Contains(check.Tags, tagManagedBy) {
 		check.Tags = append(check.Tags, tagManagedBy)
@@ -62,8 +62,11 @@ func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeC
 }
 
 func kvStringToMap(s string) map[string]string {
-	kvPairs := strings.Split(s, ",")
+	if s == "" {
+		return nil
+	}
 	result := make(map[string]string)
+	kvPairs := strings.Split(s, ",")
 	for _, kvPair := range kvPairs {
 		parts := strings.Split(kvPair, ":")
 		if len(parts) != 2 {
@@ -77,6 +80,9 @@ func kvStringToMap(s string) map[string]string {
 }
 
 func stringToSlice(s string) []string {
+	if s == "" {
+		return nil
+	}
 	var result []string
 	splits := strings.Split(s, ",")
 	for _, part := range splits {

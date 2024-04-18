@@ -21,6 +21,8 @@ metadata:
     uptime.pdok.nl/response-check-for-string-not-contains: "NullPointerException"
 ```
 
+The `id`, `name` and `url` annotations are mandatory, the rest is optional.
+
 Both `traefik.containo.us/v1alpha1` as well as `traefik.io/v1alpha1` resources are supported.
 
 ## Run/usage
@@ -78,8 +80,6 @@ The project is written in Go and scaffolded with [kubebuilder](https://kubebuild
 
 ### kubebuilder
 
-This operator was scaffolded with [kubebuilder](https://kubebuilder.io)
-
 Read the manual when you want/need to make changes.
 E.g. run `make test` before committing.
 
@@ -98,7 +98,6 @@ Make a pull request...
 ### Contact
 
 Contacting the maintainers can be done through the issue tracker.
-
 
 ## License
 
