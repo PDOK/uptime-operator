@@ -1,5 +1,12 @@
 # uptime-operator
 
+[![Build](https://github.com/PDOK/uptime-operator/actions/workflows/build-and-publish-image.yml/badge.svg)](https://github.com/PDOK/uptime-operator/actions/workflows/build-and-publish-image.yml)
+[![Lint (go)](https://github.com/PDOK/uptime-operator/actions/workflows/lint-go.yml/badge.svg)](https://github.com/PDOK/uptime-operator/actions/workflows/lint-go.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/PDOK/uptime-operator)](https://goreportcard.com/report/github.com/PDOK/uptime-operator)
+[![Coverage (go)](https://github.com/PDOK/uptime-operator/wiki/coverage.svg)](https://raw.githack.com/wiki/PDOK/uptime-operator/coverage.html)
+[![GitHub license](https://img.shields.io/github/license/PDOK/uptime-operator)](https://github.com/PDOK/uptime-operator/blob/master/LICENSE)
+[![Docker Pulls](https://img.shields.io/docker/pulls/pdok/uptime-operator.svg)](https://hub.docker.com/r/pdok/uptime-operator)
+
 Kubernetes Operator to watch [Traefik](https://github.com/traefik/traefik) IngressRoute(s) and register these with a (SaaS) uptime monitoring provider.
 
 ## Annotations
