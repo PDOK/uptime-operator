@@ -21,6 +21,11 @@ import (
 	"flag"
 	"os"
 
+	"github.com/PDOK/uptime-operator/internal/service"
+	"github.com/PDOK/uptime-operator/internal/util"
+	"github.com/peterbourgon/ff"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -33,6 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"github.com/PDOK/uptime-operator/internal/controller"
+	traefikcontainous "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikcontainous/v1alpha1"
+	traefikio "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -44,29 +53,46 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
+	utilruntime.Must(traefikcontainous.AddToScheme(scheme))
+	utilruntime.Must(traefikio.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
+//nolint:funlen
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var namespaces util.SliceFlag
+	var slackChannel string
+	var slackToken string
+	var uptimeProvider string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&secureMetrics, "metrics-secure", false,
-		"If set the metrics endpoint is served securely")
+		"If set the metrics endpoint is served securely.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
-		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+		"If set, HTTP/2 will be enabled for the metrics and webhook servers.")
+	flag.Var(&namespaces, "namespace", "Namespace(s) to watch for changes. "+
+		"Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.")
+	flag.StringVar(&slackChannel, "slack-channel", "", "The Slack Channel ID for posting updates when uptime checks are mutated.")
+	flag.StringVar(&slackToken, "slack-token", "", "The token required to access the given Slack channel.")
+	flag.StringVar(&uptimeProvider, "uptime-provider", "mock", "Name of the (SaaS) uptime monitoring provider to use.")
+
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+
+	if err := ff.Parse(flag.CommandLine, os.Args[1:], ff.WithEnvVarNoPrefix()); err != nil {
+		setupLog.Error(err, "unable to parse flags")
+		os.Exit(1)
+	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
@@ -81,7 +107,7 @@ func main() {
 		c.NextProtos = []string{"http/1.1"}
 	}
 
-	tlsOpts := []func(*tls.Config){}
+	var tlsOpts []func(*tls.Config)
 	if !enableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
@@ -90,7 +116,7 @@ func main() {
 		TLSOpts: tlsOpts,
 	})
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	managerOpts := ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
 			BindAddress:   metricsAddr,
@@ -112,12 +138,33 @@ func main() {
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
-	})
+	}
+
+	if len(namespaces) > 0 {
+		namespacesToWatch := make(map[string]cache.Config)
+		for _, namespace := range namespaces {
+			namespacesToWatch[namespace] = cache.Config{}
+		}
+		managerOpts.Cache.DefaultNamespaces = namespacesToWatch
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOpts)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
+	if err = (&controller.IngressRouteReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		UptimeCheckService: service.New(
+			service.WithProviderName(uptimeProvider),
+			service.WithSlack(slackToken, slackChannel),
+		),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "IngressRoute")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
