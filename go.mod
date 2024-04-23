@@ -5,6 +5,7 @@ go 1.22
 require (
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.32.0
+	github.com/peterbourgon/ff v1.7.1
 	github.com/slack-go/slack v0.12.5
 	github.com/traefik/traefik/v2 v2.11.0
 	golang.org/x/tools v0.17.0

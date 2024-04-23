@@ -23,6 +23,7 @@ import (
 
 	"github.com/PDOK/uptime-operator/internal/service"
 	"github.com/PDOK/uptime-operator/internal/util"
+	"github.com/peterbourgon/ff"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -82,11 +83,16 @@ func main() {
 	flag.StringVar(&slackChannel, "slack-channel", "", "The Slack Channel ID for posting updates when uptime checks are mutated.")
 	flag.StringVar(&slackToken, "slack-token", "", "The token required to access the given Slack channel.")
 	flag.StringVar(&uptimeProvider, "uptime-provider", "mock", "Name of the (SaaS) uptime monitoring provider to use.")
+
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+
+	if err := ff.Parse(flag.CommandLine, os.Args[1:], ff.WithEnvVarNoPrefix()); err != nil {
+		setupLog.Error(err, "unable to parse flags")
+		os.Exit(1)
+	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
