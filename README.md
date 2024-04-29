@@ -65,8 +65,8 @@ OPTIONS:
         Namespace(s) to watch for changes. Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.
   -slack-channel string
         The Slack Channel ID for posting updates when uptime checks are mutated.
-  -slack-token string
-        The token required to access the given Slack channel.
+  -slack-webhook-url string
+        The webhook URL required to post messages to the given Slack channel.
   -uptime-provider string
         Name of the (SaaS) uptime monitoring provider to use. (default "mock")
   -zap-devel

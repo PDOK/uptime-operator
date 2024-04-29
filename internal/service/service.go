@@ -42,10 +42,10 @@ func WithProviderName(provider string) UptimeCheckOption {
 	}
 }
 
-func WithSlack(slackToken string, slackChannel string) UptimeCheckOption {
+func WithSlack(slackWebhookURL string, slackChannel string) UptimeCheckOption {
 	return func(service *UptimeCheckService) *UptimeCheckService {
-		if slackToken != "" && slackChannel != "" {
-			service.slack = NewSlack(slackToken, slackChannel)
+		if slackWebhookURL != "" && slackChannel != "" {
+			service.slack = NewSlack(slackWebhookURL, slackChannel)
 		}
 		return service
 	}

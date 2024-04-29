@@ -67,7 +67,7 @@ func main() {
 	var enableHTTP2 bool
 	var namespaces util.SliceFlag
 	var slackChannel string
-	var slackToken string
+	var slackWebhookURL string
 	var uptimeProvider string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -81,7 +81,7 @@ func main() {
 	flag.Var(&namespaces, "namespace", "Namespace(s) to watch for changes. "+
 		"Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.")
 	flag.StringVar(&slackChannel, "slack-channel", "", "The Slack Channel ID for posting updates when uptime checks are mutated.")
-	flag.StringVar(&slackToken, "slack-token", "", "The token required to access the given Slack channel.")
+	flag.StringVar(&slackWebhookURL, "slack-webhook-url", "", "The webhook URL required to post messages to the given Slack channel.")
 	flag.StringVar(&uptimeProvider, "uptime-provider", "mock", "Name of the (SaaS) uptime monitoring provider to use.")
 
 	opts := zap.Options{
@@ -159,7 +159,7 @@ func main() {
 		Scheme: mgr.GetScheme(),
 		UptimeCheckService: service.New(
 			service.WithProviderName(uptimeProvider),
-			service.WithSlack(slackToken, slackChannel),
+			service.WithSlack(slackWebhookURL, slackChannel),
 		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IngressRoute")
