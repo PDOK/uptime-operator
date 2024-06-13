@@ -9,25 +9,26 @@ import (
 )
 
 type Slack struct {
-	client    *slack.Client
-	channelID string
+	webhookURL string
+	channelID  string
 }
 
-func NewSlack(token, channelID string) *Slack {
+func NewSlack(webhookURL, channelID string) *Slack {
 	return &Slack{
-		client:    slack.New(token),
-		channelID: channelID,
+		webhookURL: webhookURL,
+		channelID:  channelID,
 	}
 }
 
 func (s *Slack) Send(ctx context.Context, message string) {
-	channelID, timestamp, err := s.client.PostMessageContext(ctx, s.channelID,
-		slack.MsgOptionText(message, false),
-		slack.MsgOptionUsername(model.OperatorName),
-		slack.MsgOptionIconEmoji(":up:"),
-	)
+	err := slack.PostWebhook(s.webhookURL, &slack.WebhookMessage{
+		Channel:   s.channelID,
+		Text:      message,
+		Username:  model.OperatorName,
+		IconEmoji: ":up:",
+	})
 	if err != nil {
 		log.FromContext(ctx).Error(err, "failed to post Slack message",
-			"message", message, "channel", channelID, "timestamp", timestamp)
+			"message", message, "channel", s.channelID)
 	}
 }

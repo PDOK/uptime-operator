@@ -22,11 +22,9 @@ import (
 	"os"
 
 	"github.com/PDOK/uptime-operator/internal/service"
-	"github.com/PDOK/uptime-operator/internal/service/providers"
 	"github.com/PDOK/uptime-operator/internal/util"
 	"github.com/peterbourgon/ff"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -69,15 +67,10 @@ func main() {
 	var enableHTTP2 bool
 	var namespaces util.SliceFlag
 	var slackChannel string
-	var slackToken string
+	var slackWebhookURL string
 	var uptimeProvider string
-	var pingdomApiToken string
-	var pingdomAlertUserIds util.SliceFlag
-	var pingdomAlertIntegrationIds util.SliceFlag
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
-		"The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081",
-		"The address the probe endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -87,76 +80,22 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers.")
 	flag.Var(&namespaces, "namespace", "Namespace(s) to watch for changes. "+
 		"Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.")
-	flag.StringVar(&slackChannel, "slack-channel", "",
-		"The Slack Channel ID for posting updates when uptime checks are mutated.")
-	flag.StringVar(&slackToken, "slack-token", "",
-		"The token required to access the given Slack channel.")
-	flag.StringVar(&uptimeProvider, "uptime-provider", "mock",
-		"Name of the (SaaS) uptime monitoring provider to use.")
-	flag.StringVar(&pingdomApiToken, "pingdom-api-token", "",
-		"The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'")
-	flag.Var(&pingdomAlertUserIds, "pingdom-alert-user-ids",
-		"One or more IDs of Pingdom users to alert. Only applies when 'uptime-provider' is 'pingdom'")
-	flag.Var(&pingdomAlertIntegrationIds, "pingdom-alert-integration-ids",
-		"One or more IDs of Pingdom integrations (like slack channels) to alert. Only applies when 'uptime-provider' is 'pingdom'")
+	flag.StringVar(&slackChannel, "slack-channel", "", "The Slack Channel ID for posting updates when uptime checks are mutated.")
+	flag.StringVar(&slackWebhookURL, "slack-webhook-url", "", "The webhook URL required to post messages to the given Slack channel.")
+	flag.StringVar(&uptimeProvider, "uptime-provider", "mock", "Name of the (SaaS) uptime monitoring provider to use.")
 
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	if err := ff.Parse(flag.CommandLine, os.Args[1:], ff.WithEnvVarNoPrefix()); err != nil {
 		setupLog.Error(err, "unable to parse flags")
 		os.Exit(1)
 	}
 
-	mgr, err := createManager(enableHTTP2, metricsAddr, secureMetrics, probeAddr, enableLeaderElection, namespaces)
-	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
-	}
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	var uptimeProviderSettings any
-	if uptimeProvider == "pingdom" {
-		uptimeProviderSettings = providers.PingdomSettings{
-			ApiToken:            pingdomApiToken,
-			AlertUserIds:        pingdomAlertUserIds,
-			AlertIntegrationIds: pingdomAlertIntegrationIds,
-		}
-	}
-
-	if err = (&controller.IngressRouteReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		UptimeCheckService: service.New(
-			service.WithProviderAndSettings(uptimeProvider, uptimeProviderSettings),
-			service.WithSlack(slackToken, slackChannel),
-		),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "IngressRoute")
-		os.Exit(1)
-	}
-	//+kubebuilder:scaffold:builder
-
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
-	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
-
-	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
-}
-
-func createManager(enableHTTP2 bool, metricsAddr string, secureMetrics bool, probeAddr string,
-	enableLeaderElection bool, namespaces util.SliceFlag) (manager.Manager, error) {
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
 	// prevent from being vulnerable to the HTTP/2 Stream Cancelation and
@@ -209,5 +148,37 @@ func createManager(enableHTTP2 bool, metricsAddr string, secureMetrics bool, pro
 		managerOpts.Cache.DefaultNamespaces = namespacesToWatch
 	}
 
-	return ctrl.NewManager(ctrl.GetConfigOrDie(), managerOpts)
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOpts)
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	if err = (&controller.IngressRouteReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		UptimeCheckService: service.New(
+			service.WithProviderName(uptimeProvider),
+			service.WithSlack(slackWebhookURL, slackChannel),
+		),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "IngressRoute")
+		os.Exit(1)
+	}
+	//+kubebuilder:scaffold:builder
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
+	setupLog.Info("starting manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
 }

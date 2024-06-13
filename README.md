@@ -76,8 +76,8 @@ OPTIONS:
         The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'
   -slack-channel string
         The Slack Channel ID for posting updates when uptime checks are mutated.
-  -slack-token string
-        The token required to access the given Slack channel.
+  -slack-webhook-url string
+        The webhook URL required to post messages to the given Slack channel.
   -uptime-provider string
         Name of the (SaaS) uptime monitoring provider to use. (default "mock")
   -zap-devel
