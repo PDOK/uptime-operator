@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	classiclog "log"
 
 	m "github.com/PDOK/uptime-operator/internal/model"
 	"github.com/PDOK/uptime-operator/internal/service/providers"
@@ -31,12 +32,15 @@ func WithProvider(provider UptimeProvider) UptimeCheckOption {
 	}
 }
 
-func WithProviderName(provider string) UptimeCheckOption {
+func WithProviderAndSettings(provider string, settings any) UptimeCheckOption {
 	return func(service *UptimeCheckService) *UptimeCheckService {
-		switch provider { //nolint:gocritic
+		switch provider {
 		case "mock":
 			service.provider = providers.NewMockUptimeProvider()
-			// TODO add new case(s) for actual uptime monitoring SaaS providers
+		case "pingdom":
+			service.provider = providers.NewPingdomUptimeProvider(settings.(providers.PingdomSettings))
+		default:
+			classiclog.Fatalf("unsupported provider specified: %s", provider)
 		}
 		return service
 	}

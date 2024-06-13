@@ -8,6 +8,11 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/pdok/uptime-operator.svg)](https://hub.docker.com/r/pdok/uptime-operator)
 
 Kubernetes Operator to watch [Traefik](https://github.com/traefik/traefik) IngressRoute(s) and register these with a (SaaS) uptime monitoring provider.
+Currently supported providers are:
+- [Pingdom](https://www.pingdom.com/)
+- Mock (for testing purposes)
+
+Submit a PR when you wish to add another provider!
 
 ## Annotations
 
@@ -24,7 +29,7 @@ metadata:
     uptime.pdok.nl/url: "https://site.example/service/wms/v1_0"
     uptime.pdok.nl/tags: "metadata,separated,by,commas"
     uptime.pdok.nl/request-headers: "Accept: application/json, Accept-Language: en"
-    uptime.pdok.nl/response-check-for-string-contains: "200 OK"
+    uptime.pdok.nl/response-check-for-string-contains: "It works!"
     uptime.pdok.nl/response-check-for-string-not-contains: "NullPointerException"
 ```
 
@@ -63,6 +68,12 @@ OPTIONS:
         If set the metrics endpoint is served securely.
   -namespace value
         Namespace(s) to watch for changes. Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.
+  -pingdom-alert-integration-ids value
+        One or more IDs of Pingdom integrations (like slack channels) to alert. Only applies when 'uptime-provider' is 'pingdom'
+  -pingdom-alert-user-ids value
+        One or more IDs of Pingdom users to alert. Only applies when 'uptime-provider' is 'pingdom'
+  -pingdom-api-token string
+        The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'
   -slack-channel string
         The Slack Channel ID for posting updates when uptime checks are mutated.
   -slack-token string
