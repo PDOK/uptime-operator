@@ -71,9 +71,9 @@ func main() {
 	var slackChannel string
 	var slackWebhookURL string
 	var uptimeProvider string
-	var pingdomApiToken string
-	var pingdomAlertUserIds util.SliceFlag
-	var pingdomAlertIntegrationIds util.SliceFlag
+	var pingdomAPIToken string
+	var pingdomAlertUserIDs util.SliceFlag
+	var pingdomAlertIntegrationIDs util.SliceFlag
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
 		"The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081",
@@ -93,11 +93,11 @@ func main() {
 		"The webhook URL required to post messages to the given Slack channel.")
 	flag.StringVar(&uptimeProvider, "uptime-provider", "mock",
 		"Name of the (SaaS) uptime monitoring provider to use.")
-	flag.StringVar(&pingdomApiToken, "pingdom-api-token", "",
+	flag.StringVar(&pingdomAPIToken, "pingdom-api-token", "",
 		"The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'")
-	flag.Var(&pingdomAlertUserIds, "pingdom-alert-user-ids",
+	flag.Var(&pingdomAlertUserIDs, "pingdom-alert-user-ids",
 		"One or more IDs of Pingdom users to alert. Only applies when 'uptime-provider' is 'pingdom'")
-	flag.Var(&pingdomAlertIntegrationIds, "pingdom-alert-integration-ids",
+	flag.Var(&pingdomAlertIntegrationIDs, "pingdom-alert-integration-ids",
 		"One or more IDs of Pingdom integrations (like slack channels) to alert. Only applies when 'uptime-provider' is 'pingdom'")
 
 	opts := zap.Options{
@@ -120,9 +120,9 @@ func main() {
 	var uptimeProviderSettings any
 	if uptimeProvider == "pingdom" {
 		uptimeProviderSettings = providers.PingdomSettings{
-			ApiToken:            pingdomApiToken,
-			AlertUserIds:        pingdomAlertUserIds,
-			AlertIntegrationIds: pingdomAlertIntegrationIds,
+			APIToken:            pingdomAPIToken,
+			AlertUserIDs:        pingdomAlertUserIDs,
+			AlertIntegrationIDs: pingdomAlertIntegrationIDs,
 		}
 	}
 
