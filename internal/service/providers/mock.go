@@ -17,11 +17,6 @@ func NewMockUptimeProvider() *MockUptimeProvider {
 	}
 }
 
-func (m *MockUptimeProvider) HasCheck(check model.UptimeCheck) bool {
-	_, ok := m.checks[check.ID]
-	return ok
-}
-
 func (m *MockUptimeProvider) CreateOrUpdateCheck(check model.UptimeCheck) error {
 	m.checks[check.ID] = check
 

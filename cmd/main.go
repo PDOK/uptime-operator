@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"log"
 	"os"
 
 	"github.com/PDOK/uptime-operator/internal/service"
@@ -119,10 +120,18 @@ func main() {
 
 	var uptimeProviderSettings any
 	if uptimeProvider == "pingdom" {
+		alertUserIDs, err := util.StringsToInts(pingdomAlertUserIDs)
+		if err != nil {
+			log.Fatalf("Unable to parse 'pingdom-alert-user-ids' flag: %v", err)
+		}
+		alertIntegrationIDs, err := util.StringsToInts(pingdomAlertIntegrationIDs)
+		if err != nil {
+			log.Fatalf("Unable to parse 'pingdom-alert-integration-ids' flag: %v", err)
+		}
 		uptimeProviderSettings = providers.PingdomSettings{
-			APIToken:            pingdomAPIToken,
-			AlertUserIDs:        pingdomAlertUserIDs,
-			AlertIntegrationIDs: pingdomAlertIntegrationIDs,
+			APIToken:       pingdomAPIToken,
+			UserIDs:        alertUserIDs,
+			IntegrationIDs: alertIntegrationIDs,
 		}
 	}
 
