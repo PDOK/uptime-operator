@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	classiclog "log"
@@ -260,35 +261,24 @@ func (m *PingdomUptimeProvider) execRequest(ctx context.Context, req *http.Reque
 	if err != nil {
 		return resp, err
 	}
-	err = handleRateLimits(ctx, resp)
-	if err != nil {
-		return resp, err
-	}
-	return resp, err
+	rateLimitErr := errors.Join(
+		handleRateLimits(ctx, resp.Header.Get(headerReqLimitShort)),
+		handleRateLimits(ctx, resp.Header.Get(headerReqLimitLong)),
+	)
+	return resp, rateLimitErr
 }
 
-func handleRateLimits(ctx context.Context, resp *http.Response) error {
-	remainingShort, resetTimeShort, err := parseRateLimitHeader(resp.Header.Get(headerReqLimitShort))
+func handleRateLimits(ctx context.Context, rateLimitHeader string) error {
+	remaining, resetTime, err := parseRateLimitHeader(rateLimitHeader)
 	if err != nil {
 		return err
 	}
-	if remainingShort < 25 {
+	if remaining < 25 {
 		log.FromContext(ctx).Info(
-			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeShort+1),
-			headerReqLimitShort, remainingShort)
+			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTime+1),
+			headerReqLimitShort, remaining)
 
-		time.Sleep(time.Duration(resetTimeShort+1) * time.Second)
-	}
-	remainingLong, resetTimeLong, err := parseRateLimitHeader(resp.Header.Get(headerReqLimitLong))
-	if err != nil {
-		return err
-	}
-	if remainingLong < 25 {
-		log.FromContext(ctx).Info(
-			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeLong+1),
-			headerReqLimitLong, remainingLong)
-
-		time.Sleep(time.Duration(resetTimeLong+1) * time.Second)
+		time.Sleep(time.Duration(remaining+1) * time.Second)
 	}
 	return nil
 }
