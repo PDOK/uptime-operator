@@ -86,7 +86,7 @@ func (m *PingdomUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
 func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (int64, error) {
 	result := checkNotFound
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(pingdomURL+"?include_tags=true"), nil)
+	req, err := http.NewRequest(http.MethodGet, pingdomURL+"?include_tags=true", nil)
 	if err != nil {
 		return result, err
 	}

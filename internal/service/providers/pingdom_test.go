@@ -63,7 +63,8 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 		}
 		t.Run(tt.name, func(t *testing.T) {
 			if os.Getenv("PINGDOM_API_TOKEN") == "" {
-				assert.Fail(t, "PINGDOM_API_TOKEN is required")
+				assert.Fail(t, "PINGDOM_API_TOKEN is required to run this integration test against the REAL pingdom API. "+
+					"To skip this test run 'go test' in short mode, for example 'go test -short ./...'")
 			}
 			settings := PingdomSettings{APIToken: os.Getenv("PINGDOM_API_TOKEN")}
 
