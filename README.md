@@ -109,6 +109,11 @@ Install [golangci-lint](https://golangci-lint.run/usage/install/) and run `golan
 from the root.
 (Don't run `make lint`, it uses an old version of golangci-lint.)
 
+### Testing against real APIs
+
+To test against (for example) the actual/real Pingdom API run `internal/service/providers/pingdom_test.go`
+this test requires the `PINGDOM_API_TOKEN` env var to be set.
+
 ## Misc
 
 ### How to Contribute

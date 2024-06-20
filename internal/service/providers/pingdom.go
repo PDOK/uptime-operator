@@ -70,16 +70,15 @@ func (m *PingdomUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Add("Authorization", "Bearer "+m.settings.APIToken)
-	resp, err := m.httpClient.Do(req)
+	resp, err := m.execRequestWithAuth(req)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		resultBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("got status %d, expected HTTP OK when deleting existing check. Error %s", resp.StatusCode, resultBody)
 	}
-	defer resp.Body.Close()
 	return nil
 }
 
@@ -91,8 +90,7 @@ func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (int64, error
 		return result, err
 	}
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+m.settings.APIToken)
-	resp, err := m.httpClient.Do(req)
+	resp, err := m.execRequestWithAuth(req)
 	if err != nil {
 		return result, err
 	}
@@ -142,7 +140,7 @@ func (m *PingdomUptimeProvider) createCheck(check model.UptimeCheck) error {
 	if err != nil {
 		return err
 	}
-	err = m.sendRequestWithBody(req)
+	err = m.execRequestWithBody(req)
 	if err != nil {
 		return err
 	}
@@ -160,7 +158,7 @@ func (m *PingdomUptimeProvider) updateCheck(existingPingdomID int64, check model
 	if err != nil {
 		return err
 	}
-	err = m.sendRequestWithBody(req)
+	err = m.execRequestWithBody(req)
 	if err != nil {
 		return err
 	}
@@ -228,10 +226,9 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 	return json.Marshal(message)
 }
 
-func (m *PingdomUptimeProvider) sendRequestWithBody(req *http.Request) error {
+func (m *PingdomUptimeProvider) execRequestWithBody(req *http.Request) error {
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Bearer "+m.settings.APIToken)
-	resp, err := m.httpClient.Do(req)
+	resp, err := m.execRequestWithAuth(req)
 	if err != nil {
 		return err
 	}
@@ -241,6 +238,11 @@ func (m *PingdomUptimeProvider) sendRequestWithBody(req *http.Request) error {
 		return fmt.Errorf("got http status %d, while expected 200. Error: %s", resp.StatusCode, resultBody)
 	}
 	return nil
+}
+
+func (m *PingdomUptimeProvider) execRequestWithAuth(req *http.Request) (*http.Response, error) {
+	req.Header.Add("Authorization", "Bearer "+m.settings.APIToken)
+	return m.httpClient.Do(req)
 }
 
 func getPort(checkURL *url.URL) (int, error) {
