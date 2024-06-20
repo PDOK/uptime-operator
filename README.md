@@ -54,6 +54,8 @@ USAGE:
    <uptime-controller-manager> [OPTIONS]
 
 OPTIONS:
+  -enable-deletes
+        Allow the operator to delete checks from the uptime provider when ingress routes are removed.
   -enable-http2
         If set, HTTP/2 will be enabled for the metrics and webhook servers.
   -health-probe-bind-address string

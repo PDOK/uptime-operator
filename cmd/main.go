@@ -71,6 +71,7 @@ func main() {
 	var namespaces util.SliceFlag
 	var slackChannel string
 	var slackWebhookURL string
+	var enableDeletes bool
 	var uptimeProvider string
 	var pingdomAPIToken string
 	var pingdomAlertUserIDs util.SliceFlag
@@ -86,6 +87,8 @@ func main() {
 		"If set the metrics endpoint is served securely.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers.")
+	flag.BoolVar(&enableDeletes, "enable-deletes", false,
+		"Allow the operator to delete checks from the uptime provider when ingress routes are removed.")
 	flag.Var(&namespaces, "namespace", "Namespace(s) to watch for changes. "+
 		"Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.")
 	flag.StringVar(&slackChannel, "slack-channel", "",
@@ -141,6 +144,7 @@ func main() {
 		UptimeCheckService: service.New(
 			service.WithProviderAndSettings(uptimeProvider, uptimeProviderSettings),
 			service.WithSlack(slackWebhookURL, slackChannel),
+			service.WithDeletes(enableDeletes),
 		),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IngressRoute")

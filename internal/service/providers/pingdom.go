@@ -18,6 +18,7 @@ import (
 
 const pingdomURL = "https://api.pingdom.com/api/3.1/checks"
 const checkNotFound = -1
+const customIdPrefix = "id:"
 
 type PingdomSettings struct {
 	APIToken       string
@@ -39,8 +40,6 @@ func NewPingdomUptimeProvider(settings PingdomSettings) *PingdomUptimeProvider {
 		httpClient: &http.Client{Timeout: time.Duration(5) * time.Minute},
 	}
 }
-
-//rate limit + unit test met mock data
 
 func (m *PingdomUptimeProvider) CreateOrUpdateCheck(check model.UptimeCheck) (err error) {
 	existingCheckID, err := m.findCheck(check)
@@ -180,7 +179,9 @@ func (m *PingdomUptimeProvider) checkToJson(check model.UptimeCheck, includeType
 	if checkURL.RawQuery != "" {
 		relativeURL += "?" + checkURL.RawQuery
 	}
-	check.Tags = append(check.Tags, "id:"+check.ID)
+
+	// add the check id (from the k8s annotation) as a tag, so we can latter retrieve the check it during update or delete.
+	check.Tags = append(check.Tags, customIdPrefix+check.ID)
 
 	message := map[string]any{
 		"name":       check.Name,
@@ -208,8 +209,8 @@ func (m *PingdomUptimeProvider) checkToJson(check model.UptimeCheck, includeType
 	// request header need to be submitted in numbered JSON keys
 	// for example "requestheader1": key:value, "requestheader2": key:value, etc
 	var headers []string
-	for k := range check.RequestHeaders {
-		headers = append(headers, k)
+	for header := range check.RequestHeaders {
+		headers = append(headers, header)
 	}
 	sort.Strings(headers)
 	for i, header := range headers {
