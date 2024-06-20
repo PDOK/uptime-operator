@@ -22,6 +22,12 @@ const pingdomURL = "https://api.pingdom.com/api/3.1/checks"
 const checkNotFound = int64(-1)
 const customIDPrefix = "id:"
 
+const headerAuthorization = "Authorization"
+const headerAccept = "Accept"
+const headerContentType = "Content-Type"
+const headerReqLimitShort = "Req-Limit-Short"
+const headerReqLimitLong = "Req-Limit-Long"
+
 type PingdomSettings struct {
 	APIToken       string
 	UserIDs        []int
@@ -94,7 +100,7 @@ func (m *PingdomUptimeProvider) findCheck(ctx context.Context, check model.Uptim
 	if err != nil {
 		return result, err
 	}
-	req.Header.Add("Accept", "application/json")
+	req.Header.Add(headerAccept, "application/json")
 	resp, err := m.execRequest(ctx, req)
 	if err != nil {
 		return result, err
@@ -124,6 +130,8 @@ func (m *PingdomUptimeProvider) findCheck(ctx context.Context, check model.Uptim
 			}
 			tagName := tag["name"].(string)
 			if strings.HasSuffix(tagName, check.ID) {
+				// bingo, we've found the Pingdom check based on our custom ID (check.ID which is stored in a Pingdom tag).
+				// now we return the actual Pingdom ID which we need for updates/deletes/etc.
 				pingdomCheckID := pingdomCheck["id"]
 				if pingdomCheckID != nil && pingdomCheckID.(float64) > 0 {
 					result = int64(pingdomCheckID.(float64))
@@ -232,7 +240,7 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 }
 
 func (m *PingdomUptimeProvider) execRequestWithBody(ctx context.Context, req *http.Request) error {
-	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add(headerContentType, "application/json")
 	resp, err := m.execRequest(ctx, req)
 	if err != nil {
 		return err
@@ -246,23 +254,25 @@ func (m *PingdomUptimeProvider) execRequestWithBody(ctx context.Context, req *ht
 }
 
 func (m *PingdomUptimeProvider) execRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
-	req.Header.Add("Authorization", "Bearer "+m.settings.APIToken)
+	req.Header.Add(headerAuthorization, "Bearer "+m.settings.APIToken)
 	resp, err := m.httpClient.Do(req)
 	if err != nil {
 		return resp, err
 	}
 
 	// handle rate limits
-	remainingShort, resetTimeShort, err := parseRateLimitHeader(resp.Header.Get("Req-Limit-Short"))
+	remainingShort, resetTimeShort, err := parseRateLimitHeader(resp.Header.Get(headerReqLimitShort))
 	if remainingShort < 10 {
-		log.FromContext(ctx).Info(fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeShort+1),
-			"Req-Limit-Short", remainingShort)
+		log.FromContext(ctx).Info(
+			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeShort+1),
+			headerReqLimitShort, remainingShort)
 		time.Sleep(time.Duration(resetTimeShort+1) * time.Second)
 	}
-	remainingLong, resetTimeLong, err := parseRateLimitHeader(resp.Header.Get("Req-Limit-Long"))
+	remainingLong, resetTimeLong, err := parseRateLimitHeader(resp.Header.Get(headerReqLimitLong))
 	if remainingLong < 10 {
-		log.FromContext(ctx).Info(fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeLong+1),
-			"Req-Limit-Long", remainingLong)
+		log.FromContext(ctx).Info(
+			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeLong+1),
+			headerReqLimitLong, remainingLong)
 		time.Sleep(time.Duration(resetTimeLong+1) * time.Second)
 	}
 	return resp, err
