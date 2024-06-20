@@ -260,23 +260,37 @@ func (m *PingdomUptimeProvider) execRequest(ctx context.Context, req *http.Reque
 	if err != nil {
 		return resp, err
 	}
+	err = handleRateLimits(ctx, resp)
+	if err != nil {
+		return resp, err
+	}
+	return resp, err
+}
 
-	// handle rate limits
+func handleRateLimits(ctx context.Context, resp *http.Response) error {
 	remainingShort, resetTimeShort, err := parseRateLimitHeader(resp.Header.Get(headerReqLimitShort))
+	if err != nil {
+		return err
+	}
 	if remainingShort < 10 {
 		log.FromContext(ctx).Info(
 			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeShort+1),
 			headerReqLimitShort, remainingShort)
+
 		time.Sleep(time.Duration(resetTimeShort+1) * time.Second)
 	}
 	remainingLong, resetTimeLong, err := parseRateLimitHeader(resp.Header.Get(headerReqLimitLong))
+	if err != nil {
+		return err
+	}
 	if remainingLong < 10 {
 		log.FromContext(ctx).Info(
 			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeLong+1),
 			headerReqLimitLong, remainingLong)
+
 		time.Sleep(time.Duration(resetTimeLong+1) * time.Second)
 	}
-	return resp, err
+	return nil
 }
 
 func parseRateLimitHeader(header string) (remaining int, resetTime int, err error) {
