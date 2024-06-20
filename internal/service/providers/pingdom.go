@@ -276,7 +276,7 @@ func handleRateLimits(ctx context.Context, rateLimitHeader string) error {
 	if remaining < 25 {
 		log.FromContext(ctx).Info(
 			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTime+1),
-			headerReqLimitShort, remaining)
+			rateLimitHeader, remaining)
 
 		time.Sleep(time.Duration(remaining+1) * time.Second)
 	}
