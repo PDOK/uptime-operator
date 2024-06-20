@@ -17,7 +17,7 @@ import (
 )
 
 const pingdomURL = "https://api.pingdom.com/api/3.1/checks"
-const checkNotFound = -1
+const checkNotFound = int64(-1)
 const customIdPrefix = "id:"
 
 type PingdomSettings struct {
@@ -70,39 +70,41 @@ func (m *PingdomUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Bearer "+m.settings.APIToken)
 	resp, err := m.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("got status %d, expected HTTP OK when deleting existing check", resp.StatusCode)
+		resultBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("got status %d, expected HTTP OK when deleting existing check. Error %s", resp.StatusCode, resultBody)
 	}
 	defer resp.Body.Close()
 	return nil
 }
 
-func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (existingCheckID int64, err error) {
+func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (int64, error) {
+	result := checkNotFound
+
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s?include_tags=true", pingdomURL), nil)
 	if err != nil {
-		return checkNotFound, err
+		return result, err
 	}
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Authorization", "Bearer "+m.settings.APIToken)
 	resp, err := m.httpClient.Do(req)
 	if err != nil {
-		return checkNotFound, err
+		return result, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return checkNotFound, fmt.Errorf("got status %d, expected HTTP OK when listing existing checks", resp.StatusCode)
+		return result, fmt.Errorf("got status %d, expected HTTP OK when listing existing checks", resp.StatusCode)
 	}
 
 	checksResponse := make(map[string]any)
 	err = json.NewDecoder(resp.Body).Decode(&checksResponse)
 	if err != nil {
-		return checkNotFound, err
+		return result, err
 	}
 
 	pingdomChecks := checksResponse["checks"].([]any)
@@ -121,13 +123,12 @@ func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (existingChec
 			if strings.HasSuffix(tagName, check.ID) {
 				pingdomCheckID := pingdomCheck["id"]
 				if pingdomCheckID != nil && pingdomCheckID.(float64) > 0 {
-					existingCheckID = int64(pingdomCheckID.(float64))
-					return
+					result = int64(pingdomCheckID.(float64))
 				}
 			}
 		}
 	}
-	return checkNotFound, nil
+	return result, nil
 }
 
 func (m *PingdomUptimeProvider) createCheck(check model.UptimeCheck) error {
