@@ -2,10 +2,11 @@ package providers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	classiclog "log"
 	"net/http"
 	"net/url"
 	"sort"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/PDOK/uptime-operator/internal/model"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const pingdomURL = "https://api.pingdom.com/api/3.1/checks"
@@ -31,9 +33,10 @@ type PingdomUptimeProvider struct {
 	httpClient *http.Client
 }
 
+// NewPingdomUptimeProvider creates a PingdomUptimeProvider
 func NewPingdomUptimeProvider(settings PingdomSettings) *PingdomUptimeProvider {
 	if settings.APIToken == "" {
-		log.Fatal("Pingdom API token is not provided")
+		classiclog.Fatal("Pingdom API token is not provided")
 	}
 	return &PingdomUptimeProvider{
 		settings:   settings,
@@ -41,28 +44,30 @@ func NewPingdomUptimeProvider(settings PingdomSettings) *PingdomUptimeProvider {
 	}
 }
 
-func (m *PingdomUptimeProvider) CreateOrUpdateCheck(check model.UptimeCheck) (err error) {
-	existingCheckID, err := m.findCheck(check)
+// CreateOrUpdateCheck create the given check with Pingdom, or update an existing check. Needs to be idempotent!
+func (m *PingdomUptimeProvider) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) (err error) {
+	existingCheckID, err := m.findCheck(ctx, check)
 	if err != nil {
 		return err
 	}
 	if existingCheckID == checkNotFound {
-		err = m.createCheck(check)
+		err = m.createCheck(ctx, check)
 	} else {
-		err = m.updateCheck(existingCheckID, check)
+		err = m.updateCheck(ctx, existingCheckID, check)
 	}
 	return err
 }
 
-func (m *PingdomUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
-	log.Printf("deleting check %v\n", check)
+// DeleteCheck deletes the given check from Pingdom
+func (m *PingdomUptimeProvider) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
+	log.FromContext(ctx).Info("deleting check", "check", check)
 
-	existingCheckID, err := m.findCheck(check)
+	existingCheckID, err := m.findCheck(ctx, check)
 	if err != nil {
 		return err
 	}
 	if existingCheckID == checkNotFound {
-		log.Printf("check with ID '%s' is already deleted", check.ID)
+		log.FromContext(ctx).Info(fmt.Sprintf("check with ID '%s' is already deleted", check.ID))
 		return nil
 	}
 
@@ -70,7 +75,7 @@ func (m *PingdomUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
 	if err != nil {
 		return err
 	}
-	resp, err := m.execRequestWithAuth(req)
+	resp, err := m.execRequest(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -82,7 +87,7 @@ func (m *PingdomUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
 	return nil
 }
 
-func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (int64, error) {
+func (m *PingdomUptimeProvider) findCheck(ctx context.Context, check model.UptimeCheck) (int64, error) {
 	result := checkNotFound
 
 	req, err := http.NewRequest(http.MethodGet, pingdomURL+"?include_tags=true", nil)
@@ -90,7 +95,7 @@ func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (int64, error
 		return result, err
 	}
 	req.Header.Add("Accept", "application/json")
-	resp, err := m.execRequestWithAuth(req)
+	resp, err := m.execRequest(ctx, req)
 	if err != nil {
 		return result, err
 	}
@@ -129,8 +134,8 @@ func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (int64, error
 	return result, nil
 }
 
-func (m *PingdomUptimeProvider) createCheck(check model.UptimeCheck) error {
-	log.Printf("creating check %v\n", check)
+func (m *PingdomUptimeProvider) createCheck(ctx context.Context, check model.UptimeCheck) error {
+	log.FromContext(ctx).Info("creating check", "check", check)
 
 	message, err := m.checkToJSON(check, true)
 	if err != nil {
@@ -140,15 +145,15 @@ func (m *PingdomUptimeProvider) createCheck(check model.UptimeCheck) error {
 	if err != nil {
 		return err
 	}
-	err = m.execRequestWithBody(req)
+	err = m.execRequestWithBody(ctx, req)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *PingdomUptimeProvider) updateCheck(existingPingdomID int64, check model.UptimeCheck) error {
-	log.Printf("updating check %v\n, using pingdom ID %d", check, existingPingdomID)
+func (m *PingdomUptimeProvider) updateCheck(ctx context.Context, existingPingdomID int64, check model.UptimeCheck) error {
+	log.FromContext(ctx).Info("updating check", "check", check, "pingdom ID", existingPingdomID)
 
 	message, err := m.checkToJSON(check, false)
 	if err != nil {
@@ -158,7 +163,7 @@ func (m *PingdomUptimeProvider) updateCheck(existingPingdomID int64, check model
 	if err != nil {
 		return err
 	}
-	err = m.execRequestWithBody(req)
+	err = m.execRequestWithBody(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -186,7 +191,7 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 		"name":       check.Name,
 		"host":       checkURL.Hostname(),
 		"url":        relativeURL,
-		"encryption": true,
+		"encryption": true, // assume all checks run over HTTPS
 		"port":       port,
 		"resolution": 1,
 		"tags":       check.Tags,
@@ -226,9 +231,9 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 	return json.Marshal(message)
 }
 
-func (m *PingdomUptimeProvider) execRequestWithBody(req *http.Request) error {
+func (m *PingdomUptimeProvider) execRequestWithBody(ctx context.Context, req *http.Request) error {
 	req.Header.Add("Content-Type", "application/json")
-	resp, err := m.execRequestWithAuth(req)
+	resp, err := m.execRequest(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -240,9 +245,35 @@ func (m *PingdomUptimeProvider) execRequestWithBody(req *http.Request) error {
 	return nil
 }
 
-func (m *PingdomUptimeProvider) execRequestWithAuth(req *http.Request) (*http.Response, error) {
+func (m *PingdomUptimeProvider) execRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
 	req.Header.Add("Authorization", "Bearer "+m.settings.APIToken)
-	return m.httpClient.Do(req)
+	resp, err := m.httpClient.Do(req)
+	if err != nil {
+		return resp, err
+	}
+
+	// handle rate limits
+	remainingShort, resetTimeShort, err := parseRateLimitHeader(resp.Header.Get("Req-Limit-Short"))
+	if remainingShort < 10 {
+		log.FromContext(ctx).Info(fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeShort+1),
+			"Req-Limit-Short", remainingShort)
+		time.Sleep(time.Duration(resetTimeShort+1) * time.Second)
+	}
+	remainingLong, resetTimeLong, err := parseRateLimitHeader(resp.Header.Get("Req-Limit-Long"))
+	if remainingLong < 10 {
+		log.FromContext(ctx).Info(fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeLong+1),
+			"Req-Limit-Long", remainingLong)
+		time.Sleep(time.Duration(resetTimeLong+1) * time.Second)
+	}
+	return resp, err
+}
+
+func parseRateLimitHeader(header string) (remaining int, resetTime int, err error) {
+	if header == "" {
+		return 0, 0, nil
+	}
+	_, err = fmt.Sscanf(header, "Remaining: %d Time until reset: %d", &remaining, &resetTime)
+	return
 }
 
 func getPort(checkURL *url.URL) (int, error) {

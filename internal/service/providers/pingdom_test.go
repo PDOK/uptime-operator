@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"testing"
@@ -10,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test against production pingdom API. Please supply PINGDOM_API_TOKEN + USER/INTEGRATION_ID.
+// Test against production pingdom API. Please supply PINGDOM_API_TOKEN + optionally USER/INTEGRATION_ID.
 // This test creates one check, updates it and then deletes the check.
 func TestAgainstREALPingdomAPI(t *testing.T) {
 	tests := []struct {
@@ -23,7 +24,7 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 			name: "Create check",
 			annotations: map[string]string{
 				"uptime.pdok.nl/id":                                     "3w2e9d804b2cd6bf18b8c0a6e1c04e46ac62b98c",
-				"uptime.pdok.nl/name":                                   "Test Check Richard",
+				"uptime.pdok.nl/name":                                   "UptimeOperatorPingdomTestCheck",
 				"uptime.pdok.nl/url":                                    "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
 				"uptime.pdok.nl/tags":                                   "tag1, tag2",
 				"uptime.pdok.nl/request-headers":                        "key1:value1, key2:value2",
@@ -35,7 +36,7 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 			name: "Update check",
 			annotations: map[string]string{
 				"uptime.pdok.nl/id":                                     "3w2e9d804b2cd6bf18b8c0a6e1c04e46ac62b98c",
-				"uptime.pdok.nl/name":                                   "Test Check Richard Updated",
+				"uptime.pdok.nl/name":                                   "UptimeOperatorPingdomTestCheck - Updated",
 				"uptime.pdok.nl/url":                                    "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
 				"uptime.pdok.nl/tags":                                   "tag1",
 				"uptime.pdok.nl/request-headers":                        "key1:value1, key2:value2, key3:value3",
@@ -47,7 +48,7 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 			name: "Delete check",
 			annotations: map[string]string{
 				"uptime.pdok.nl/id":                                     "3w2e9d804b2cd6bf18b8c0a6e1c04e46ac62b98c",
-				"uptime.pdok.nl/name":                                   "Test Check Richard Updated",
+				"uptime.pdok.nl/name":                                   "UptimeOperatorPingdomTestCheck - Updated",
 				"uptime.pdok.nl/url":                                    "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
 				"uptime.pdok.nl/tags":                                   "tag1",
 				"uptime.pdok.nl/request-headers":                        "key1:value1, key2:value2, key3:value3",
@@ -82,17 +83,22 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 			check, err := model.NewUptimeCheck("foo", tt.annotations)
 			assert.NoError(t, err)
 			if tt.wantDelete {
-				if err := m.DeleteCheck(*check); (err != nil) != tt.wantErr {
+				if err := m.DeleteCheck(context.TODO(), *check); (err != nil) != tt.wantErr {
 					t.Errorf("DeleteCheck() error = %v, wantErr %v", err, tt.wantErr)
 				}
+				// give pingdom some time to process the api call, just in case
+				time.Sleep(5 * time.Second)
+
+				existingCheckID, err := m.findCheck(context.TODO(), *check)
+				assert.NoError(t, err)
+				assert.Equal(t, checkNotFound, existingCheckID)
 			} else {
-				if err := m.CreateOrUpdateCheck(*check); (err != nil) != tt.wantErr {
+				if err := m.CreateOrUpdateCheck(context.TODO(), *check); (err != nil) != tt.wantErr {
 					t.Errorf("CreateOrUpdateCheck() error = %v, wantErr %v", err, tt.wantErr)
 				}
+				// give pingdom some time to process the api call, just in case
+				time.Sleep(5 * time.Second)
 			}
-
-			// give pingdom some time to process the api call, just in case
-			time.Sleep(5 * time.Second)
 		})
 	}
 }
