@@ -169,7 +169,7 @@ var _ = Describe("IngressRoute Controller", func() {
 			controllerReconciler := &IngressRouteReconciler{
 				Client:             k8sClient,
 				Scheme:             k8sClient.Scheme(),
-				UptimeCheckService: service.New(service.WithProvider(testProvider)),
+				UptimeCheckService: service.New(service.WithProvider(testProvider), service.WithDeletes(true)),
 			}
 
 			By("Reconciling the IngressRoute (expecting on is available from previous test)")
