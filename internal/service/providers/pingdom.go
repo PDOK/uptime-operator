@@ -96,7 +96,8 @@ func (m *PingdomUptimeProvider) DeleteCheck(ctx context.Context, check model.Upt
 func (m *PingdomUptimeProvider) findCheck(ctx context.Context, check model.UptimeCheck) (int64, error) {
 	result := checkNotFound
 
-	req, err := http.NewRequest(http.MethodGet, pingdomURL+"?include_tags=true", nil)
+	// list all checks managed by uptime-operator. Can be at most 25.000, which is probably sufficient.
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s?include_tags=true&limit=25000&tags=%s", pingdomURL, model.TagManagedBy), nil)
 	if err != nil {
 		return result, err
 	}
