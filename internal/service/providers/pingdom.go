@@ -18,7 +18,7 @@ import (
 
 const pingdomURL = "https://api.pingdom.com/api/3.1/checks"
 const checkNotFound = int64(-1)
-const customIdPrefix = "id:"
+const customIDPrefix = "id:"
 
 type PingdomSettings struct {
 	APIToken       string
@@ -86,7 +86,7 @@ func (m *PingdomUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
 func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (int64, error) {
 	result := checkNotFound
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s?include_tags=true", pingdomURL), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(pingdomURL+"?include_tags=true"), nil)
 	if err != nil {
 		return result, err
 	}
@@ -134,7 +134,7 @@ func (m *PingdomUptimeProvider) findCheck(check model.UptimeCheck) (int64, error
 func (m *PingdomUptimeProvider) createCheck(check model.UptimeCheck) error {
 	log.Printf("creating check %v\n", check)
 
-	message, err := m.checkToJson(check, true)
+	message, err := m.checkToJSON(check, true)
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (m *PingdomUptimeProvider) createCheck(check model.UptimeCheck) error {
 func (m *PingdomUptimeProvider) updateCheck(existingPingdomID int64, check model.UptimeCheck) error {
 	log.Printf("updating check %v\n, using pingdom ID %d", check, existingPingdomID)
 
-	message, err := m.checkToJson(check, false)
+	message, err := m.checkToJSON(check, false)
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func (m *PingdomUptimeProvider) updateCheck(existingPingdomID int64, check model
 	return nil
 }
 
-func (m *PingdomUptimeProvider) checkToJson(check model.UptimeCheck, includeType bool) ([]byte, error) {
+func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType bool) ([]byte, error) {
 	checkURL, err := url.ParseRequestURI(check.URL)
 	if err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (m *PingdomUptimeProvider) checkToJson(check model.UptimeCheck, includeType
 	}
 
 	// add the check id (from the k8s annotation) as a tag, so we can latter retrieve the check it during update or delete.
-	check.Tags = append(check.Tags, customIdPrefix+check.ID)
+	check.Tags = append(check.Tags, customIDPrefix+check.ID)
 
 	message := map[string]any{
 		"name":       check.Name,

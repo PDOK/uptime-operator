@@ -68,8 +68,8 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 			settings := PingdomSettings{APIToken: os.Getenv("PINGDOM_API_TOKEN")}
 
 			if os.Getenv("PINGDOM_USER_ID") != "" {
-				userId, _ := strconv.Atoi(os.Getenv("PINGDOM_USER_ID"))
-				settings.UserIDs = []int{userId}
+				userID, _ := strconv.Atoi(os.Getenv("PINGDOM_USER_ID"))
+				settings.UserIDs = []int{userID}
 			}
 			if os.Getenv("PINGDOM_INTEGRATION_ID") != "" {
 				integrationID, _ := strconv.Atoi(os.Getenv("PINGDOM_INTEGRATION_ID"))
