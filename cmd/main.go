@@ -129,7 +129,7 @@ func main() {
 		}
 		alertIntegrationIDs, err := util.StringsToInts(pingdomAlertIntegrationIDs)
 		if err != nil {
-			setupLog.Error(err, "Unable to parse 'pingdom-alert-integration-ids' flag: %v")
+			setupLog.Error(err, "Unable to parse 'pingdom-alert-integration-ids' flag")
 			os.Exit(1)
 		}
 		uptimeProviderSettings = providers.PingdomSettings{

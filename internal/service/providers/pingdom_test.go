@@ -45,6 +45,18 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 			},
 		},
 		{
+			name: "Update check again (test for idempotency)",
+			annotations: map[string]string{
+				"uptime.pdok.nl/id":                                     "3w2e9d804b2cd6bf18b8c0a6e1c04e46ac62b98c",
+				"uptime.pdok.nl/name":                                   "UptimeOperatorPingdomTestCheck - Updated",
+				"uptime.pdok.nl/url":                                    "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
+				"uptime.pdok.nl/tags":                                   "tag1",
+				"uptime.pdok.nl/request-headers":                        "key1:value1, key2:value2, key3:value3",
+				"uptime.pdok.nl/response-check-for-string-contains":     "",
+				"uptime.pdok.nl/response-check-for-string-not-contains": "",
+			},
+		},
+		{
 			name: "Delete check",
 			annotations: map[string]string{
 				"uptime.pdok.nl/id":                                     "3w2e9d804b2cd6bf18b8c0a6e1c04e46ac62b98c",

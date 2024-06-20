@@ -272,7 +272,7 @@ func handleRateLimits(ctx context.Context, resp *http.Response) error {
 	if err != nil {
 		return err
 	}
-	if remainingShort < 10 {
+	if remainingShort < 25 {
 		log.FromContext(ctx).Info(
 			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeShort+1),
 			headerReqLimitShort, remainingShort)
@@ -283,7 +283,7 @@ func handleRateLimits(ctx context.Context, resp *http.Response) error {
 	if err != nil {
 		return err
 	}
-	if remainingLong < 10 {
+	if remainingLong < 25 {
 		log.FromContext(ctx).Info(
 			fmt.Sprintf("Waiting for %d seconds to avoid hitting Pingdom rate limit", resetTimeLong+1),
 			headerReqLimitLong, remainingLong)
