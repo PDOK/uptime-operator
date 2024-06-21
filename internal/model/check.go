@@ -9,8 +9,8 @@ import (
 const (
 	OperatorName = "uptime-operator"
 
-	// Indicate to humans that the given check is managed by the operator.
-	tagManagedBy = "managed-by-" + OperatorName
+	// TagManagedBy Indicate to humans that the given check is managed by the operator.
+	TagManagedBy = "managed-by-" + OperatorName
 
 	AnnotationBase              = "uptime.pdok.nl"
 	AnnotationFinalizer         = AnnotationBase + "/finalizer"
@@ -55,8 +55,8 @@ func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeC
 		StringContains:    annotations[AnnotationStringContains],
 		StringNotContains: annotations[AnnotationStringNotContains],
 	}
-	if !slices.Contains(check.Tags, tagManagedBy) {
-		check.Tags = append(check.Tags, tagManagedBy)
+	if !slices.Contains(check.Tags, TagManagedBy) {
+		check.Tags = append(check.Tags, TagManagedBy)
 	}
 	return check, nil
 }

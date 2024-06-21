@@ -1,10 +1,12 @@
 package providers
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 
 	"github.com/PDOK/uptime-operator/internal/model"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type MockUptimeProvider struct {
@@ -17,25 +19,20 @@ func NewMockUptimeProvider() *MockUptimeProvider {
 	}
 }
 
-func (m *MockUptimeProvider) HasCheck(check model.UptimeCheck) bool {
-	_, ok := m.checks[check.ID]
-	return ok
-}
-
-func (m *MockUptimeProvider) CreateOrUpdateCheck(check model.UptimeCheck) error {
+func (m *MockUptimeProvider) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) error {
 	m.checks[check.ID] = check
 
 	checkJSON, _ := json.Marshal(check)
-	log.Printf("MOCK: created or updated check %s\n", checkJSON)
+	log.FromContext(ctx).Info(fmt.Sprintf("MOCK: created or updated check %s\n", checkJSON))
 
 	return nil
 }
 
-func (m *MockUptimeProvider) DeleteCheck(check model.UptimeCheck) error {
+func (m *MockUptimeProvider) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
 	delete(m.checks, check.ID)
 
 	checkJSON, _ := json.Marshal(check)
-	log.Printf("MOCK: deleted check %s\n", checkJSON)
+	log.FromContext(ctx).Info(fmt.Sprintf("MOCK: deleted check %s\n", checkJSON))
 
 	return nil
 }

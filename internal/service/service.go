@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	classiclog "log"
 
 	m "github.com/PDOK/uptime-operator/internal/model"
 	"github.com/PDOK/uptime-operator/internal/service/providers"
@@ -12,8 +13,9 @@ import (
 type UptimeCheckOption func(*UptimeCheckService) *UptimeCheckService
 
 type UptimeCheckService struct {
-	provider UptimeProvider
-	slack    *Slack
+	provider      UptimeProvider
+	slack         *Slack
+	enableDeletes bool
 }
 
 func New(options ...UptimeCheckOption) *UptimeCheckService {
@@ -31,12 +33,15 @@ func WithProvider(provider UptimeProvider) UptimeCheckOption {
 	}
 }
 
-func WithProviderName(provider string) UptimeCheckOption {
+func WithProviderAndSettings(provider string, settings any) UptimeCheckOption {
 	return func(service *UptimeCheckService) *UptimeCheckService {
-		switch provider { //nolint:gocritic
+		switch provider {
 		case "mock":
 			service.provider = providers.NewMockUptimeProvider()
-			// TODO add new case(s) for actual uptime monitoring SaaS providers
+		case "pingdom":
+			service.provider = providers.NewPingdomUptimeProvider(settings.(providers.PingdomSettings))
+		default:
+			classiclog.Fatalf("unsupported provider specified: %s", provider)
 		}
 		return service
 	}
@@ -51,6 +56,13 @@ func WithSlack(slackWebhookURL string, slackChannel string) UptimeCheckOption {
 	}
 }
 
+func WithDeletes(enableDeletes bool) UptimeCheckOption {
+	return func(service *UptimeCheckService) *UptimeCheckService {
+		service.enableDeletes = enableDeletes
+		return service
+	}
+}
+
 func (r *UptimeCheckService) Mutate(ctx context.Context, mutation m.Mutation, ingressName string, annotations map[string]string) {
 	check, err := m.NewUptimeCheck(ingressName, annotations)
 	if err != nil {
@@ -58,12 +70,25 @@ func (r *UptimeCheckService) Mutate(ctx context.Context, mutation m.Mutation, in
 		return
 	}
 	if mutation == m.CreateOrUpdate {
-		err = r.provider.CreateOrUpdateCheck(*check)
+		err = r.provider.CreateOrUpdateCheck(ctx, *check)
 		r.logMutation(ctx, err, mutation, check)
 	} else if mutation == m.Delete {
-		err = r.provider.DeleteCheck(*check)
+		if !r.enableDeletes {
+			r.logDeleteDisabled(ctx, check, err)
+			return
+		}
+		err = r.provider.DeleteCheck(ctx, *check)
 		r.logMutation(ctx, err, mutation, check)
 	}
+}
+
+func (r *UptimeCheckService) logDeleteDisabled(ctx context.Context, check *m.UptimeCheck, err error) {
+	msg := fmt.Sprintf("delete of uptime check '%s' (id: %s) not executed since 'enable-deletes=false'.", check.Name, check.ID)
+	log.FromContext(ctx).Error(err, msg, "check", check)
+	if r.slack == nil {
+		return
+	}
+	r.slack.Send(ctx, ":information_source: "+msg)
 }
 
 func (r *UptimeCheckService) logAnnotationErr(ctx context.Context, err error) {

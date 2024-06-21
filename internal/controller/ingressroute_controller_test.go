@@ -54,17 +54,12 @@ func newTestUptimeProvider() *testUptimeProvider {
 	}
 }
 
-func (m *testUptimeProvider) HasCheck(check m.UptimeCheck) bool {
-	_, ok := m.checks[check.ID]
-	return ok
-}
-
-func (m *testUptimeProvider) CreateOrUpdateCheck(check m.UptimeCheck) error {
+func (m *testUptimeProvider) CreateOrUpdateCheck(_ context.Context, check m.UptimeCheck) error {
 	m.checks[check.ID] = check
 	return nil
 }
 
-func (m *testUptimeProvider) DeleteCheck(check m.UptimeCheck) error {
+func (m *testUptimeProvider) DeleteCheck(_ context.Context, check m.UptimeCheck) error {
 	delete(m.checks, check.ID)
 	return nil
 }
@@ -169,7 +164,7 @@ var _ = Describe("IngressRoute Controller", func() {
 			controllerReconciler := &IngressRouteReconciler{
 				Client:             k8sClient,
 				Scheme:             k8sClient.Scheme(),
-				UptimeCheckService: service.New(service.WithProvider(testProvider)),
+				UptimeCheckService: service.New(service.WithProvider(testProvider), service.WithDeletes(true)),
 			}
 
 			By("Reconciling the IngressRoute (expecting on is available from previous test)")
