@@ -26,7 +26,7 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 				"uptime.pdok.nl/id":                                     "3w2e9d804b2cd6bf18b8c0a6e1c04e46ac62b98c",
 				"uptime.pdok.nl/name":                                   "UptimeOperatorPingdomTestCheck",
 				"uptime.pdok.nl/url":                                    "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
-				"uptime.pdok.nl/tags":                                   "tag1, tag2",
+				"uptime.pdok.nl/tags":                                   "tag1, tag2, TooLongTagOvEtj8xOzZmGPJNf5ZcGikHzTjAG55xvcWVymItA0O8Us9tq6fEAfRYeN6AODj2gwRRi5l",
 				"uptime.pdok.nl/request-headers":                        "key1:value1, key2:value2",
 				"uptime.pdok.nl/response-check-for-string-contains":     "bla",
 				"uptime.pdok.nl/response-check-for-string-not-contains": "",

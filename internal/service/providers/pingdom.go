@@ -194,8 +194,18 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 		relativeURL += "?" + checkURL.RawQuery
 	}
 
-	// add the check id (from the k8s annotation) as a tag, so we can latter retrieve the check it during update or delete.
+	// add the check id (from the k8s annotation) as a tag, so
+	// we can latter retrieve the check during update or delete.
 	check.Tags = append(check.Tags, customIDPrefix+check.ID)
+
+	// tags can be at most 64 chars long, cut off longer ones
+	for k := range check.Tags {
+		tag := check.Tags[k]
+		if len(tag) > 64 {
+			tag = tag[:64]
+		}
+		check.Tags[k] = tag
+	}
 
 	message := map[string]any{
 		"name":       check.Name,
@@ -209,9 +219,6 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 	if includeType {
 		// update messages shouldn't include 'type', since the type of check can't be modified in Pingdom.
 		message["type"] = "http"
-	}
-	if check.Tags != nil && len(check.Tags) > 0 {
-		message["tags"] = check.Tags
 	}
 	if m.settings.UserIDs != nil && len(m.settings.UserIDs) > 0 {
 		message["userids"] = m.settings.UserIDs
@@ -284,9 +291,6 @@ func handleRateLimits(ctx context.Context, rateLimitHeader string) error {
 }
 
 func parseRateLimitHeader(header string) (remaining int, resetTime int, err error) {
-	if header == "" {
-		return 0, 0, nil
-	}
 	_, err = fmt.Sscanf(header, "Remaining: %d Time until reset: %d", &remaining, &resetTime)
 	return
 }
