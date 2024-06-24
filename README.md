@@ -37,6 +37,12 @@ The `id`, `name` and `url` annotations are mandatory, the rest is optional.
 
 Both `traefik.containo.us/v1alpha1` as well as `traefik.io/v1alpha1` resources are supported.
 
+### Ignoring routes
+
+To exclude a route from uptime monitoring you can explicitly add a `uptime.pdok.nl/ignore` annotation.
+The difference between a route without any annotation or a route with an `/ignore` annotation is that the 
+latter won't cause any error logging.
+
 ## Run/usage
 
 ```shell

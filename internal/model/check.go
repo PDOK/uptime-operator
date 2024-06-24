@@ -13,7 +13,6 @@ const (
 	TagManagedBy = "managed-by-" + OperatorName
 
 	AnnotationBase              = "uptime.pdok.nl"
-	AnnotationFinalizer         = AnnotationBase + "/finalizer"
 	AnnotationID                = AnnotationBase + "/id"
 	AnnotationName              = AnnotationBase + "/name"
 	AnnotationURL               = AnnotationBase + "/url"
@@ -21,6 +20,8 @@ const (
 	AnnotationRequestHeaders    = AnnotationBase + "/request-headers"
 	AnnotationStringContains    = AnnotationBase + "/response-check-for-string-contains"
 	AnnotationStringNotContains = AnnotationBase + "/response-check-for-string-not-contains"
+	AnnotationFinalizer         = AnnotationBase + "/finalizer"
+	AnnotationIgnore            = AnnotationBase + "/ignore"
 )
 
 type UptimeCheck struct {

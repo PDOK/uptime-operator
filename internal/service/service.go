@@ -64,6 +64,11 @@ func WithDeletes(enableDeletes bool) UptimeCheckOption {
 }
 
 func (r *UptimeCheckService) Mutate(ctx context.Context, mutation m.Mutation, ingressName string, annotations map[string]string) {
+	_, ignore := annotations[m.AnnotationIgnore]
+	if ignore {
+		r.logRouteIgnore(ctx, mutation, ingressName)
+		return
+	}
 	check, err := m.NewUptimeCheck(ingressName, annotations)
 	if err != nil {
 		r.logAnnotationErr(ctx, err)
@@ -74,7 +79,7 @@ func (r *UptimeCheckService) Mutate(ctx context.Context, mutation m.Mutation, in
 		r.logMutation(ctx, err, mutation, check)
 	} else if mutation == m.Delete {
 		if !r.enableDeletes {
-			r.logDeleteDisabled(ctx, check, err)
+			r.logDeleteDisabled(ctx, check)
 			return
 		}
 		err = r.provider.DeleteCheck(ctx, *check)
@@ -82,9 +87,18 @@ func (r *UptimeCheckService) Mutate(ctx context.Context, mutation m.Mutation, in
 	}
 }
 
-func (r *UptimeCheckService) logDeleteDisabled(ctx context.Context, check *m.UptimeCheck, err error) {
+func (r *UptimeCheckService) logDeleteDisabled(ctx context.Context, check *m.UptimeCheck) {
 	msg := fmt.Sprintf("delete of uptime check '%s' (id: %s) not executed since 'enable-deletes=false'.", check.Name, check.ID)
-	log.FromContext(ctx).Error(err, msg, "check", check)
+	log.FromContext(ctx).Info(msg, "check", check)
+	if r.slack == nil {
+		return
+	}
+	r.slack.Send(ctx, ":information_source: "+msg)
+}
+
+func (r *UptimeCheckService) logRouteIgnore(ctx context.Context, mutation m.Mutation, name string) {
+	msg := fmt.Sprintf("ignoring %s for ingress route %s, since this route is marked to be excluded from uptime monitoring", mutation, name)
+	log.FromContext(ctx).Info(msg)
 	if r.slack == nil {
 		return
 	}
