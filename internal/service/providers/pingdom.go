@@ -220,10 +220,10 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 		// update messages shouldn't include 'type', since the type of check can't be modified in Pingdom.
 		message["type"] = "http"
 	}
-	if m.settings.UserIDs != nil && len(m.settings.UserIDs) > 0 {
+	if len(m.settings.UserIDs) > 0 {
 		message["userids"] = m.settings.UserIDs
 	}
-	if m.settings.IntegrationIDs != nil && len(m.settings.IntegrationIDs) > 0 {
+	if len(m.settings.IntegrationIDs) > 0 {
 		message["integrationids"] = m.settings.IntegrationIDs
 	}
 

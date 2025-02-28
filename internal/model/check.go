@@ -29,9 +29,9 @@ type UptimeCheck struct {
 	Name              string            `json:"name"`
 	URL               string            `json:"url"`
 	Tags              []string          `json:"tags"`
-	RequestHeaders    map[string]string `json:"request_headers"`
-	StringContains    string            `json:"string_contains"`
-	StringNotContains string            `json:"string_not_contains"`
+	RequestHeaders    map[string]string `json:"request_headers"`     //nolint:tagliatelle // grandfathered in
+	StringContains    string            `json:"string_contains"`     //nolint:tagliatelle // grandfathered in
+	StringNotContains string            `json:"string_not_contains"` //nolint:tagliatelle // grandfathered in
 }
 
 func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeCheck, error) {
