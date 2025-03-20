@@ -127,10 +127,11 @@ var _ = Describe("IngressRoute Controller", func() {
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testProvider.checks).To(ContainElement(m.UptimeCheck{
-				ID:   "y45735y375",
-				URL:  "https://test.example",
-				Name: "Test uptime check",
-				Tags: []string{"managed-by-uptime-operator"},
+				ID:       "y45735y375",
+				URL:      "https://test.example",
+				Name:     "Test uptime check",
+				Tags:     []string{"managed-by-uptime-operator"},
+				Interval: 1,
 			}))
 
 			By("Fetching and updating IngressRoute (adding extra uptime annotation)")
@@ -151,6 +152,7 @@ var _ = Describe("IngressRoute Controller", func() {
 				Name:           "Test uptime check",
 				Tags:           []string{"managed-by-uptime-operator"},
 				StringContains: "OK",
+				Interval:       1,
 			}))
 
 			By("Reconciling the IngressRoute again to make sure it doesn't cause any side effects")
@@ -176,6 +178,7 @@ var _ = Describe("IngressRoute Controller", func() {
 				Name:           "Test uptime check",
 				Tags:           []string{"managed-by-uptime-operator"},
 				StringContains: "OK",
+				Interval:       1,
 			}))
 
 			By("Delete IngressRoute")

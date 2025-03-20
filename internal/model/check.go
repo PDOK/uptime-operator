@@ -31,7 +31,7 @@ type UptimeCheck struct {
 	Name              string            `json:"name"`
 	URL               string            `json:"url"`
 	Tags              []string          `json:"tags"`
-	Resolution        int               `json:"resolution"`
+	Interval          int               `json:"resolution"`
 	RequestHeaders    map[string]string `json:"request_headers"`     //nolint:tagliatelle // grandfathered in
 	StringContains    string            `json:"string_contains"`     //nolint:tagliatelle // grandfathered in
 	StringNotContains string            `json:"string_not_contains"` //nolint:tagliatelle // grandfathered in
@@ -50,7 +50,7 @@ func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeC
 	if !ok {
 		return nil, fmt.Errorf("%s annotation not found on ingress route %s", AnnotationURL, ingressName)
 	}
-	resolution, err := getResolution(annotations)
+	interval, err := getInterval(annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeC
 		Name:              name,
 		URL:               url,
 		Tags:              stringToSlice(annotations[AnnotationTags]),
-		Resolution:        resolution,
+		Interval:          interval,
 		RequestHeaders:    kvStringToMap(annotations[AnnotationRequestHeaders]),
 		StringContains:    annotations[AnnotationStringContains],
 		StringNotContains: annotations[AnnotationStringNotContains],
@@ -70,11 +70,11 @@ func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeC
 	return check, nil
 }
 
-func getResolution(annotations map[string]string) (int, error) {
+func getInterval(annotations map[string]string) (int, error) {
 	if _, ok := annotations[AnnotationInterval]; ok {
 		interval, err := strconv.Atoi(annotations[AnnotationInterval])
 		if err != nil {
-			return 0, fmt.Errorf("%s annotation should contain integer value: %v", AnnotationInterval, err)
+			return 1, fmt.Errorf("%s annotation should contain integer value: %w", AnnotationInterval, err)
 		}
 		return interval, nil
 	}

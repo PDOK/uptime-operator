@@ -213,7 +213,7 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 		"url":        relativeURL,
 		"encryption": true, // assume all checks run over HTTPS
 		"port":       port,
-		"resolution": check.Resolution,
+		"resolution": check.Interval,
 		"tags":       check.Tags,
 	}
 	if includeType {
