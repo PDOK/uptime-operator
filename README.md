@@ -28,6 +28,7 @@ metadata:
     uptime.pdok.nl/name: "Logical name of the check"
     uptime.pdok.nl/url: "https://site.example/service/wms/v1_0"
     uptime.pdok.nl/tags: "metadata,separated,by,commas"
+    uptime.pdok.nl/interval-in-minutes: "5"
     uptime.pdok.nl/request-headers: "Accept: application/json, Accept-Language: en"
     uptime.pdok.nl/response-check-for-string-contains: "It works!"
     uptime.pdok.nl/response-check-for-string-not-contains: "NullPointerException"
