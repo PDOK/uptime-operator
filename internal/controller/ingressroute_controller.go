@@ -29,7 +29,6 @@ import (
 
 	m "github.com/PDOK/uptime-operator/internal/model"
 	"github.com/PDOK/uptime-operator/internal/service"
-	traefikcontainous "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikcontainous/v1alpha1"
 	traefikio "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,8 +48,6 @@ type IngressRouteReconciler struct {
 	UptimeCheckService *service.UptimeCheckService
 }
 
-//+kubebuilder:rbac:groups=traefik.containo.us,resources=ingressroutes,verbs=get;list;watch
-//+kubebuilder:rbac:groups=traefik.containo.us,resources=ingressroutes/finalizers,verbs=update
 //+kubebuilder:rbac:groups=traefik.io,resources=ingressroutes,verbs=get;list;watch
 //+kubebuilder:rbac:groups=traefik.io,resources=ingressroutes/finalizers,verbs=update
 
@@ -76,24 +73,19 @@ func (r *IngressRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request
 }
 
 func (r *IngressRouteReconciler) getIngressRoute(ctx context.Context, req ctrl.Request) (client.Object, error) {
-	// first try getting "traefik.containo.us/v1alpha1" ingress
-	ingressContainous := &traefikcontainous.IngressRoute{}
-	if err := r.Get(ctx, req.NamespacedName, ingressContainous); err != nil {
-		// not found, now try getting "traefik.io/v1alpha1" ingress
-		ingressIo := &traefikio.IngressRoute{}
-		if err = r.Get(ctx, req.NamespacedName, ingressIo); err != nil {
-			// still not found, handle error
-			logger := log.FromContext(ctx)
-			if apierrors.IsNotFound(err) {
-				logger.Info("IngressRoute resource not found", "name", req.NamespacedName)
-			} else {
-				logger.Error(err, "unable to fetch IngressRoute resource", "error", err)
-			}
-			return nil, err
+	// try getting "traefik.io/v1alpha1" ingress
+	ingressIo := &traefikio.IngressRoute{}
+	if err := r.Get(ctx, req.NamespacedName, ingressIo); err != nil {
+		// still not found, handle error
+		logger := log.FromContext(ctx)
+		if apierrors.IsNotFound(err) {
+			logger.Info("IngressRoute resource not found", "name", req.NamespacedName)
+		} else {
+			logger.Error(err, "unable to fetch IngressRoute resource", "error", err)
 		}
-		return ingressIo, nil
+		return nil, err
 	}
-	return ingressContainous, nil
+	return ingressIo, nil
 }
 
 func finalizeIfNecessary(ctx context.Context, c client.Client, obj client.Object, finalizerName string, finalizer func() error) (shouldContinue bool, err error) {
@@ -127,10 +119,6 @@ func (r *IngressRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(m.OperatorName).
-		Watches(
-			&traefikcontainous.IngressRoute{}, // watch "traefik.containo.us/v1alpha1" ingresses
-			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(preCondition)).
 		Watches(
 			&traefikio.IngressRoute{}, // watch "traefik.io/v1alpha1" ingresses
 			&handler.EnqueueRequestForObject{},

@@ -37,7 +37,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2" //nolint:revive // ginkgo bdd
 	. "github.com/onsi/gomega"    //nolint:revive // ginkgo bdd
-	traefikcontainous "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikcontainous/v1alpha1"
 	traefikio "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
 
 	"k8s.io/client-go/kubernetes/scheme"
@@ -90,9 +89,6 @@ var _ = BeforeSuite(func() {
 	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
-
-	err = traefikcontainous.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
 
 	err = traefikio.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())

@@ -42,7 +42,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/PDOK/uptime-operator/internal/controller"
-	traefikcontainous "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikcontainous/v1alpha1"
 	traefikio "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
@@ -55,7 +54,6 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(traefikcontainous.AddToScheme(scheme))
 	utilruntime.Must(traefikio.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
