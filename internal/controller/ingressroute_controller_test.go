@@ -32,7 +32,7 @@ import (
 	"github.com/PDOK/uptime-operator/internal/service"
 	. "github.com/onsi/ginkgo/v2" //nolint:revive // ginkgo bdd
 	. "github.com/onsi/gomega"    //nolint:revive // gingko bdd
-	traefikcontainous "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikcontainous/v1alpha1"
+	traefikio "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -64,7 +64,7 @@ func (m *testUptimeProvider) DeleteCheck(_ context.Context, check m.UptimeCheck)
 	return nil
 }
 
-var ingressRouteWithUptimeCheck = &traefikcontainous.IngressRoute{
+var ingressRouteWithUptimeCheck = &traefikio.IngressRoute{
 	TypeMeta: v1.TypeMeta{},
 	ObjectMeta: v1.ObjectMeta{
 		Name:      testIngress,
@@ -76,14 +76,14 @@ var ingressRouteWithUptimeCheck = &traefikcontainous.IngressRoute{
 			m.AnnotationName: "Test uptime check",
 		},
 	},
-	Spec: traefikcontainous.IngressRouteSpec{
-		Routes: []traefikcontainous.Route{
+	Spec: traefikio.IngressRouteSpec{
+		Routes: []traefikio.Route{
 			{
 				Kind:  "Rule",
 				Match: "Host(`localhost`)",
-				Services: []traefikcontainous.Service{
+				Services: []traefikio.Service{
 					{
-						LoadBalancerSpec: traefikcontainous.LoadBalancerSpec{
+						LoadBalancerSpec: traefikio.LoadBalancerSpec{
 							Name: "test",
 						},
 					},
@@ -111,7 +111,7 @@ var _ = Describe("IngressRoute Controller", func() {
 			}
 
 			By("Creating an IngressRoute")
-			newIngressRoute := &traefikcontainous.IngressRoute{}
+			newIngressRoute := &traefikio.IngressRoute{}
 			err := k8sClient.Get(ctx, typeNamespacedName, newIngressRoute)
 			if err != nil {
 				if k8serrors.IsNotFound(err) {
@@ -135,7 +135,7 @@ var _ = Describe("IngressRoute Controller", func() {
 			}))
 
 			By("Fetching and updating IngressRoute (adding extra uptime annotation)")
-			fetchedIngressRoute := &traefikcontainous.IngressRoute{}
+			fetchedIngressRoute := &traefikio.IngressRoute{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, fetchedIngressRoute)
 				return err == nil
@@ -182,7 +182,7 @@ var _ = Describe("IngressRoute Controller", func() {
 			}))
 
 			By("Delete IngressRoute")
-			fetchedIngressRoute := &traefikcontainous.IngressRoute{}
+			fetchedIngressRoute := &traefikio.IngressRoute{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, typeNamespacedName, fetchedIngressRoute)
 				return err == nil

@@ -19,7 +19,7 @@ Submit a PR when you wish to add another provider!
 Traefik `IngressRoute` resources should be annotated in order to successfully register an uptime check. For example:
 
 ```yaml
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: my-sweet-route
@@ -36,7 +36,7 @@ metadata:
 
 The `id`, `name` and `url` annotations are mandatory, the rest is optional.
 
-Both `traefik.containo.us/v1alpha1` as well as `traefik.io/v1alpha1` resources are supported.
+Only `traefik.io/v1alpha1` resources are supported (not the legacy `traefik.containo.us`).
 
 ### Ignoring routes
 
