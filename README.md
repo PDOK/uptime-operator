@@ -10,6 +10,7 @@
 Kubernetes Operator to watch [Traefik](https://github.com/traefik/traefik) IngressRoute(s) and register these with a (SaaS) uptime monitoring provider.
 Currently supported providers are:
 - [Pingdom](https://www.pingdom.com/)
+- [Better Stack](https://betterstack.com/)
 - Mock (for testing purposes)
 
 Submit a PR when you wish to add another provider!
