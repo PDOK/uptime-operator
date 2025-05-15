@@ -37,7 +37,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2" //nolint:revive // ginkgo bdd
 	. "github.com/onsi/gomega"    //nolint:revive // ginkgo bdd
-	traefikio "github.com/traefik/traefik/v2/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
+	traefikio "github.com/traefik/traefik/v3/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -108,7 +108,7 @@ var _ = AfterSuite(func() {
 })
 
 func getTraefikCRDPath() (string, error) {
-	traefikModule, err := getModule("github.com/traefik/traefik/v2")
+	traefikModule, err := getModule("github.com/traefik/traefik/v3")
 	if err != nil {
 		return "", err
 	}
