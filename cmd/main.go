@@ -70,9 +70,12 @@ func main() {
 	var slackWebhookURL string
 	var enableDeletes bool
 	var uptimeProvider string
+	var uptimeProviderAPIToken string
 	var pingdomAPIToken string
 	var pingdomAlertUserIDs util.SliceFlag
 	var pingdomAlertIntegrationIDs util.SliceFlag
+
+	// Default kubebuilder
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
 		"The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081",
@@ -86,16 +89,24 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers.")
 	flag.BoolVar(&enableDeletes, "enable-deletes", false,
 		"Allow the operator to delete checks from the uptime provider when ingress routes are removed.")
+
+	// General uptime-operator
 	flag.Var(&namespaces, "namespace", "Namespace(s) to watch for changes. "+
 		"Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.")
 	flag.StringVar(&slackChannel, "slack-channel", "",
 		"The Slack Channel ID for posting updates when uptime checks are mutated.")
 	flag.StringVar(&slackWebhookURL, "slack-webhook-url", "",
 		"The webhook URL required to post messages to the given Slack channel.")
+
+	// General uptime provider
 	flag.StringVar(&uptimeProvider, "uptime-provider", "mock",
 		"Name of the (SaaS) uptime monitoring provider to use.")
+	flag.StringVar(&uptimeProviderAPIToken, "uptime-provider-api-token", "",
+		"The API token to authenticate with the (SaaS) uptime  monitoring provider.")
+
+	// Pingdom specific
 	flag.StringVar(&pingdomAPIToken, "pingdom-api-token", "",
-		"The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'")
+		"DEPRECATED: use 'uptime-provider-api-token' instead. The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'")
 	flag.Var(&pingdomAlertUserIDs, "pingdom-alert-user-ids",
 		"One or more IDs of Pingdom users to alert. Only applies when 'uptime-provider' is 'pingdom'")
 	flag.Var(&pingdomAlertIntegrationIDs, "pingdom-alert-integration-ids",
@@ -119,7 +130,9 @@ func main() {
 	}
 
 	var uptimeProviderSettings any
-	if uptimeProvider == "pingdom" {
+	uptimeProviderID := service.UptimeProviderID(uptimeProvider)
+
+	if uptimeProviderID == service.ProviderPingdom {
 		alertUserIDs, err := util.StringsToInts(pingdomAlertUserIDs)
 		if err != nil {
 			setupLog.Error(err, "Unable to parse 'pingdom-alert-user-ids' flag")
@@ -130,10 +143,19 @@ func main() {
 			setupLog.Error(err, "Unable to parse 'pingdom-alert-integration-ids' flag")
 			os.Exit(1)
 		}
+		token := uptimeProviderAPIToken
+		if pingdomAPIToken == "" {
+			setupLog.Info("'pingdom-api-token' flag is deprecated, favor 'uptime-provider-api-token' instead")
+			token = pingdomAPIToken
+		}
 		uptimeProviderSettings = providers.PingdomSettings{
-			APIToken:       pingdomAPIToken,
+			APIToken:       token,
 			UserIDs:        alertUserIDs,
 			IntegrationIDs: alertIntegrationIDs,
+		}
+	} else if uptimeProviderID == service.ProviderBetterStack {
+		uptimeProviderSettings = providers.BetterStackSettings{
+			APIToken: uptimeProviderAPIToken,
 		}
 	}
 
@@ -141,7 +163,7 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		UptimeCheckService: service.New(
-			service.WithProviderAndSettings(uptimeProvider, uptimeProviderSettings),
+			service.WithProviderAndSettings(uptimeProviderID, uptimeProviderSettings),
 			service.WithSlack(slackWebhookURL, slackChannel),
 			service.WithDeletes(enableDeletes),
 		),

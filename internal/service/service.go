@@ -10,6 +10,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+// UptimeProviderID enum of supported providers
+type UptimeProviderID string
+
+const (
+	ProviderPingdom     UptimeProviderID = "pingdom"
+	ProviderBetterStack UptimeProviderID = "betterstack"
+	ProviderMock        UptimeProviderID = "mock"
+)
+
 type UptimeCheckOption func(*UptimeCheckService) *UptimeCheckService
 
 type UptimeCheckService struct {
@@ -33,13 +42,15 @@ func WithProvider(provider UptimeProvider) UptimeCheckOption {
 	}
 }
 
-func WithProviderAndSettings(provider string, settings any) UptimeCheckOption {
+func WithProviderAndSettings(provider UptimeProviderID, settings any) UptimeCheckOption {
 	return func(service *UptimeCheckService) *UptimeCheckService {
 		switch provider {
-		case "mock":
+		case ProviderMock:
 			service.provider = providers.NewMockUptimeProvider()
-		case "pingdom":
+		case ProviderPingdom:
 			service.provider = providers.NewPingdomUptimeProvider(settings.(providers.PingdomSettings))
+		case ProviderBetterStack:
+			service.provider = providers.NewBetterStackProvider(settings.(providers.BetterStackSettings))
 		default:
 			classiclog.Fatalf("unsupported provider specified: %s", provider)
 		}
