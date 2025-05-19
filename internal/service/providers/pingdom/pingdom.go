@@ -1,4 +1,4 @@
-package providers
+package pingdom
 
 import (
 	"bytes"
@@ -16,64 +16,61 @@ import (
 	"time"
 
 	"github.com/PDOK/uptime-operator/internal/model"
+	"github.com/PDOK/uptime-operator/internal/service/providers"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const pingdomURL = "https://api.pingdom.com/api/3.1/checks"
-const checkNotFound = int64(-1)
+const pingdomURL = "https://api.pingdop.com/api/3.1/checks"
 const customIDPrefix = "id:"
 
-const headerAuthorization = "Authorization"
-const headerAccept = "Accept"
-const headerContentType = "Content-Type"
 const headerReqLimitShort = "Req-Limit-Short"
 const headerReqLimitLong = "Req-Limit-Long"
 
-type PingdomSettings struct {
+type Settings struct {
 	APIToken       string
 	UserIDs        []int
 	IntegrationIDs []int
 }
 
-type PingdomUptimeProvider struct {
-	settings   PingdomSettings
+type Pingdom struct {
+	settings   Settings
 	httpClient *http.Client
 }
 
-// NewPingdomUptimeProvider creates a PingdomUptimeProvider
-func NewPingdomUptimeProvider(settings PingdomSettings) *PingdomUptimeProvider {
+// New creates a Pingdom
+func New(settings Settings) *Pingdom {
 	if settings.APIToken == "" {
 		classiclog.Fatal("Pingdom API token is not provided")
 	}
-	return &PingdomUptimeProvider{
+	return &Pingdom{
 		settings:   settings,
 		httpClient: &http.Client{Timeout: time.Duration(5) * time.Minute},
 	}
 }
 
 // CreateOrUpdateCheck create the given check with Pingdom, or update an existing check. Needs to be idempotent!
-func (m *PingdomUptimeProvider) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) (err error) {
-	existingCheckID, err := m.findCheck(ctx, check)
+func (p *Pingdom) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) (err error) {
+	existingCheckID, err := p.findCheck(ctx, check)
 	if err != nil {
 		return err
 	}
-	if existingCheckID == checkNotFound {
-		err = m.createCheck(ctx, check)
+	if existingCheckID == providers.CheckNotFound {
+		err = p.createCheck(ctx, check)
 	} else {
-		err = m.updateCheck(ctx, existingCheckID, check)
+		err = p.updateCheck(ctx, existingCheckID, check)
 	}
 	return err
 }
 
 // DeleteCheck deletes the given check from Pingdom
-func (m *PingdomUptimeProvider) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
+func (p *Pingdom) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
 	log.FromContext(ctx).Info("deleting check", "check", check)
 
-	existingCheckID, err := m.findCheck(ctx, check)
+	existingCheckID, err := p.findCheck(ctx, check)
 	if err != nil {
 		return err
 	}
-	if existingCheckID == checkNotFound {
+	if existingCheckID == providers.CheckNotFound {
 		log.FromContext(ctx).Info(fmt.Sprintf("check with ID '%s' is already deleted", check.ID))
 		return nil
 	}
@@ -82,7 +79,7 @@ func (m *PingdomUptimeProvider) DeleteCheck(ctx context.Context, check model.Upt
 	if err != nil {
 		return err
 	}
-	resp, err := m.execRequest(ctx, req)
+	resp, err := p.execRequest(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -94,16 +91,16 @@ func (m *PingdomUptimeProvider) DeleteCheck(ctx context.Context, check model.Upt
 	return nil
 }
 
-func (m *PingdomUptimeProvider) findCheck(ctx context.Context, check model.UptimeCheck) (int64, error) {
-	result := checkNotFound
+func (p *Pingdom) findCheck(ctx context.Context, check model.UptimeCheck) (int64, error) {
+	result := providers.CheckNotFound
 
 	// list all checks managed by uptime-operator. Can be at most 25.000, which is probably sufficient.
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s?include_tags=true&limit=25000&tags=%s", pingdomURL, model.TagManagedBy), nil)
 	if err != nil {
 		return result, err
 	}
-	req.Header.Add(headerAccept, "application/json")
-	resp, err := m.execRequest(ctx, req)
+	req.Header.Add(providers.HeaderAccept, "application/json")
+	resp, err := p.execRequest(ctx, req)
 	if err != nil {
 		return result, err
 	}
@@ -144,10 +141,10 @@ func (m *PingdomUptimeProvider) findCheck(ctx context.Context, check model.Uptim
 	return result, nil
 }
 
-func (m *PingdomUptimeProvider) createCheck(ctx context.Context, check model.UptimeCheck) error {
+func (p *Pingdom) createCheck(ctx context.Context, check model.UptimeCheck) error {
 	log.FromContext(ctx).Info("creating check", "check", check)
 
-	message, err := m.checkToJSON(check, true)
+	message, err := p.checkToJSON(check, true)
 	if err != nil {
 		return err
 	}
@@ -155,17 +152,17 @@ func (m *PingdomUptimeProvider) createCheck(ctx context.Context, check model.Upt
 	if err != nil {
 		return err
 	}
-	err = m.execRequestWithBody(ctx, req)
+	err = p.execRequestWithBody(ctx, req)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *PingdomUptimeProvider) updateCheck(ctx context.Context, existingPingdomID int64, check model.UptimeCheck) error {
+func (p *Pingdom) updateCheck(ctx context.Context, existingPingdomID int64, check model.UptimeCheck) error {
 	log.FromContext(ctx).Info("updating check", "check", check, "pingdom ID", existingPingdomID)
 
-	message, err := m.checkToJSON(check, false)
+	message, err := p.checkToJSON(check, false)
 	if err != nil {
 		return err
 	}
@@ -173,14 +170,14 @@ func (m *PingdomUptimeProvider) updateCheck(ctx context.Context, existingPingdom
 	if err != nil {
 		return err
 	}
-	err = m.execRequestWithBody(ctx, req)
+	err = p.execRequestWithBody(ctx, req)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType bool) ([]byte, error) {
+func (p *Pingdom) checkToJSON(check model.UptimeCheck, includeType bool) ([]byte, error) {
 	checkURL, err := url.ParseRequestURI(check.URL)
 	if err != nil {
 		return nil, err
@@ -217,14 +214,14 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 		"tags":       check.Tags,
 	}
 	if includeType {
-		// update messages shouldn't include 'type', since the type of check can't be modified in Pingdom.
+		// update messages shouldn't include 'type', since the type of check can't be modified in Pingdop.
 		message["type"] = "http"
 	}
-	if len(m.settings.UserIDs) > 0 {
-		message["userids"] = m.settings.UserIDs
+	if len(p.settings.UserIDs) > 0 {
+		message["userids"] = p.settings.UserIDs
 	}
-	if len(m.settings.IntegrationIDs) > 0 {
-		message["integrationids"] = m.settings.IntegrationIDs
+	if len(p.settings.IntegrationIDs) > 0 {
+		message["integrationids"] = p.settings.IntegrationIDs
 	}
 
 	// request header need to be submitted in numbered JSON keys
@@ -248,9 +245,9 @@ func (m *PingdomUptimeProvider) checkToJSON(check model.UptimeCheck, includeType
 	return json.Marshal(message)
 }
 
-func (m *PingdomUptimeProvider) execRequestWithBody(ctx context.Context, req *http.Request) error {
-	req.Header.Add(headerContentType, "application/json")
-	resp, err := m.execRequest(ctx, req)
+func (p *Pingdom) execRequestWithBody(ctx context.Context, req *http.Request) error {
+	req.Header.Add(providers.HeaderContentType, "application/json")
+	resp, err := p.execRequest(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -262,9 +259,9 @@ func (m *PingdomUptimeProvider) execRequestWithBody(ctx context.Context, req *ht
 	return nil
 }
 
-func (m *PingdomUptimeProvider) execRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
-	req.Header.Add(headerAuthorization, "Bearer "+m.settings.APIToken)
-	resp, err := m.httpClient.Do(req)
+func (p *Pingdom) execRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
+	req.Header.Add(providers.HeaderAuthorization, "Bearer "+p.settings.APIToken)
+	resp, err := p.httpClient.Do(req)
 	if err != nil {
 		return resp, err
 	}

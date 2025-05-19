@@ -22,7 +22,8 @@ import (
 	"os"
 
 	"github.com/PDOK/uptime-operator/internal/service"
-	"github.com/PDOK/uptime-operator/internal/service/providers"
+	"github.com/PDOK/uptime-operator/internal/service/providers/betterstack"
+	"github.com/PDOK/uptime-operator/internal/service/providers/pingdom"
 	"github.com/PDOK/uptime-operator/internal/util"
 	"github.com/peterbourgon/ff"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -144,13 +145,13 @@ func main() {
 			setupLog.Error(err, "Unable to parse 'pingdom-alert-integration-ids' flag")
 			os.Exit(1)
 		}
-		uptimeProviderSettings = providers.PingdomSettings{
+		uptimeProviderSettings = pingdom.Settings{
 			APIToken:       pingdomAPIToken,
 			UserIDs:        alertUserIDs,
 			IntegrationIDs: alertIntegrationIDs,
 		}
 	} else if uptimeProviderID == service.ProviderBetterStack {
-		uptimeProviderSettings = providers.BetterStackSettings{
+		uptimeProviderSettings = betterstack.Settings{
 			APIToken: betterstackAPIToken,
 		}
 	}

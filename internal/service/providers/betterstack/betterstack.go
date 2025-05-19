@@ -1,4 +1,4 @@
-package providers
+package betterstack
 
 import (
 	"context"
@@ -9,53 +9,54 @@ import (
 	"time"
 
 	"github.com/PDOK/uptime-operator/internal/model"
+	"github.com/PDOK/uptime-operator/internal/service/providers"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const betterStackBaseURL = "https://uptime.betterstack.com"
 
-type BetterStackSettings struct {
+type Settings struct {
 	APIToken string
 }
 
-type BetterStackUptimeProvider struct {
-	settings   BetterStackSettings
+type BetterStack struct {
+	settings   Settings
 	httpClient *http.Client
 }
 
-// NewBetterStackProvider creates a BetterStackUptimeProvider
-func NewBetterStackProvider(settings BetterStackSettings) *BetterStackUptimeProvider {
+// New creates a BetterStack
+func New(settings Settings) *BetterStack {
 	if settings.APIToken == "" {
 		classiclog.Fatal("Better Stack API token is not provided")
 	}
-	return &BetterStackUptimeProvider{
+	return &BetterStack{
 		settings:   settings,
 		httpClient: &http.Client{Timeout: time.Duration(5) * time.Minute},
 	}
 }
 
 // CreateOrUpdateCheck create the given check with Better Stack, or update an existing check. Needs to be idempotent!
-func (m *BetterStackUptimeProvider) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) (err error) {
+func (b *BetterStack) CreateOrUpdateCheck(_ context.Context, _ model.UptimeCheck) (err error) {
 	// TODO
 	return err
 }
 
 // DeleteCheck deletes the given check from Better Stack
-func (m *BetterStackUptimeProvider) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
+func (b *BetterStack) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
 	log.FromContext(ctx).Info("deleting check", "check", check)
 	// TODO
 	return nil
 }
 
-func (m *BetterStackUptimeProvider) findCheck(ctx context.Context, check model.UptimeCheck) (int64, error) {
-	result := checkNotFound
+func (b *BetterStack) findCheck(ctx context.Context, _ model.UptimeCheck) (int64, error) {
+	result := providers.CheckNotFound
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v3/metadata", betterStackBaseURL), nil)
+	req, err := http.NewRequest(http.MethodGet, betterStackBaseURL+"/api/v3/metadata", nil)
 	if err != nil {
 		return result, err
 	}
-	req.Header.Add(headerAccept, "application/json")
-	resp, err := m.execRequest(req)
+	req.Header.Add(providers.HeaderAccept, "application/json")
+	resp, err := b.execRequest(req)
 	if err != nil {
 		return result, err
 	}
@@ -73,12 +74,12 @@ func (m *BetterStackUptimeProvider) findCheck(ctx context.Context, check model.U
 	metadata := metadataResponse["data"].([]any)
 	for _, metadataEntry := range metadata {
 		// TODO find pointer to monitor
-		println(metadataEntry)
+		log.FromContext(ctx).Info("test", "metadataEntry", metadataEntry)
 	}
 	return result, nil
 }
 
-func (m *BetterStackUptimeProvider) execRequest(req *http.Request) (*http.Response, error) {
-	req.Header.Add(headerAuthorization, "Bearer "+m.settings.APIToken)
-	return m.httpClient.Do(req)
+func (b *BetterStack) execRequest(req *http.Request) (*http.Response, error) {
+	req.Header.Add(providers.HeaderAuthorization, "Bearer "+b.settings.APIToken)
+	return b.httpClient.Do(req)
 }

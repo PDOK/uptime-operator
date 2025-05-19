@@ -6,7 +6,9 @@ import (
 	classiclog "log"
 
 	m "github.com/PDOK/uptime-operator/internal/model"
-	"github.com/PDOK/uptime-operator/internal/service/providers"
+	"github.com/PDOK/uptime-operator/internal/service/providers/betterstack"
+	"github.com/PDOK/uptime-operator/internal/service/providers/mock"
+	"github.com/PDOK/uptime-operator/internal/service/providers/pingdom"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -46,11 +48,11 @@ func WithProviderAndSettings(provider UptimeProviderID, settings any) UptimeChec
 	return func(service *UptimeCheckService) *UptimeCheckService {
 		switch provider {
 		case ProviderMock:
-			service.provider = providers.NewMockUptimeProvider()
+			service.provider = mock.New()
 		case ProviderPingdom:
-			service.provider = providers.NewPingdomUptimeProvider(settings.(providers.PingdomSettings))
+			service.provider = pingdom.New(settings.(pingdom.Settings))
 		case ProviderBetterStack:
-			service.provider = providers.NewBetterStackProvider(settings.(providers.BetterStackSettings))
+			service.provider = betterstack.New(settings.(betterstack.Settings))
 		default:
 			classiclog.Fatalf("unsupported provider specified: %s", provider)
 		}
