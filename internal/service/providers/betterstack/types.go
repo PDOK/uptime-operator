@@ -1,13 +1,81 @@
 package betterstack
 
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+//nolint:tagliatelle
 type MetadataListRequest struct {
+	OwnerID   string `json:"owner_id"`
+	OwnerType string `json:"owner_type"`
 }
 
+//nolint:tagliatelle
 type MetadataListResponse struct {
+	Data []struct {
+		ID         string `json:"id"`
+		Type       string `json:"type"`
+		Attributes struct {
+			Key    string `json:"key"`
+			Values []struct {
+				Type  string `json:"type"`
+				Value string `json:"value"`
+			} `json:"values"`
+			TeamName  string `json:"team_name"`
+			OwnerID   string `json:"owner_id"`
+			OwnerType string `json:"owner_type"`
+		} `json:"attributes"`
+	} `json:"data"`
+	Pagination *struct {
+		First string `json:"first"`
+		Last  string `json:"last"`
+		Prev  string `json:"prev"`
+		Next  string `json:"next"`
+	} `json:"pagination"`
 }
 
+func (m MetadataListResponse) HasNext() bool {
+	return m.Pagination != nil && m.Pagination.Next != ""
+}
+
+func (m MetadataListResponse) Next(client httpClient) (*MetadataListResponse, error) {
+	if !m.HasNext() {
+		return nil, nil
+	}
+
+	// Make HTTP request to the next URL
+	resp, err := client.get(m.Pagination.Next)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got status %d, expected %d", resp.StatusCode, http.StatusOK)
+	}
+
+	// Parse response
+	var nextPage MetadataListResponse
+	err = json.NewDecoder(resp.Body).Decode(&nextPage)
+	if err != nil {
+		return nil, err
+	}
+	return &nextPage, nil
+}
+
+//nolint:tagliatelle
 type MetadataUpdateRequest struct {
+	Key    string `json:"key"`
+	Values []struct {
+		Value string `json:"value"`
+	} `json:"values"`
+	OwnerID   string `json:"owner_id"`
+	OwnerType string `json:"owner_type"`
 }
 
-type MetadataUpdateResponse struct {
+type MonitorCreateRequest struct {
+}
+
+type MonitorCreateResponse struct {
 }

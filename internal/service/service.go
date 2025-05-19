@@ -13,8 +13,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-
-
 type UptimeCheckOption func(*UptimeCheckService) *UptimeCheckService
 
 type UptimeCheckService struct {

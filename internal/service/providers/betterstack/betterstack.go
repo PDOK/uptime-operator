@@ -6,22 +6,45 @@ import (
 	"fmt"
 	classiclog "log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/PDOK/uptime-operator/internal/model"
-	"github.com/PDOK/uptime-operator/internal/service/providers"
+	p "github.com/PDOK/uptime-operator/internal/service/providers"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const betterStackBaseURL = "https://uptime.betterstack.com"
+
+type httpClient struct {
+	client   *http.Client
+	settings Settings
+}
+
+func (h httpClient) call(req *http.Request) (*http.Response, error) {
+	req.Header.Set(p.HeaderAuthorization, "Bearer "+h.settings.APIToken)
+	req.Header.Set(p.HeaderAccept, "application/json")
+	req.Header.Set(p.HeaderContentType, "application/json")
+	return h.client.Do(req)
+}
+
+func (h httpClient) get(url string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(p.HeaderAuthorization, "Bearer "+h.settings.APIToken)
+	req.Header.Set(p.HeaderAccept, "application/json")
+	req.Header.Set(p.HeaderContentType, "application/json")
+	return h.client.Do(req)
+}
 
 type Settings struct {
 	APIToken string
 }
 
 type BetterStack struct {
-	settings   Settings
-	httpClient *http.Client
+	httpClient httpClient
 }
 
 // New creates a BetterStack
@@ -30,14 +53,24 @@ func New(settings Settings) *BetterStack {
 		classiclog.Fatal("Better Stack API token is not provided")
 	}
 	return &BetterStack{
-		settings:   settings,
-		httpClient: &http.Client{Timeout: time.Duration(5) * time.Minute},
+		httpClient: httpClient{
+			client:   &http.Client{Timeout: time.Duration(5) * time.Minute},
+			settings: settings,
+		},
 	}
 }
 
 // CreateOrUpdateCheck create the given check with Better Stack, or update an existing check. Needs to be idempotent!
-func (b *BetterStack) CreateOrUpdateCheck(_ context.Context, _ model.UptimeCheck) (err error) {
-	// TODO
+func (b *BetterStack) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) (err error) {
+	existingCheckID, err := b.findCheck(ctx, check)
+	if err != nil {
+		return err
+	}
+	if existingCheckID == p.CheckNotFound {
+		log.FromContext(ctx).Info("creating new check", "check", check)
+	} else {
+		log.FromContext(ctx).Info("updating existing check", "check", check)
+	}
 	return err
 }
 
@@ -48,38 +81,41 @@ func (b *BetterStack) DeleteCheck(ctx context.Context, check model.UptimeCheck) 
 	return nil
 }
 
-func (b *BetterStack) findCheck(ctx context.Context, _ model.UptimeCheck) (int64, error) {
-	result := providers.CheckNotFound
-
-	req, err := http.NewRequest(http.MethodGet, betterStackBaseURL+"/api/v3/metadata", nil)
+func (b *BetterStack) findCheck(ctx context.Context, check model.UptimeCheck) (int64, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, betterStackBaseURL+"/api/v3/metadata", nil)
 	if err != nil {
-		return result, err
+		return p.CheckNotFound, err
 	}
-	req.Header.Add(providers.HeaderAccept, "application/json")
-	resp, err := b.execRequest(req)
+	resp, err := b.httpClient.call(req)
 	if err != nil {
-		return result, err
+		return p.CheckNotFound, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return result, fmt.Errorf("got status %d, expected HTTP OK when listing metadata", resp.StatusCode)
+		return p.CheckNotFound, fmt.Errorf("got status %d, expected %d when listing metadata", resp.StatusCode, http.StatusOK)
 	}
-
-	metadataResponse := make(map[string]any)
+	var metadataResponse *MetadataListResponse
 	err = json.NewDecoder(resp.Body).Decode(&metadataResponse)
 	if err != nil {
-		return result, err
+		return p.CheckNotFound, err
 	}
-
-	metadata := metadataResponse["data"].([]any)
-	for _, metadataEntry := range metadata {
-		// TODO find pointer to monitor
-		log.FromContext(ctx).Info("test", "metadataEntry", metadataEntry)
+	for {
+		for _, md := range metadataResponse.Data {
+			if md.Attributes.Key == check.ID {
+				monitorID, err := strconv.ParseInt(md.Attributes.OwnerID, 10, 64)
+				if err != nil {
+					return p.CheckNotFound, fmt.Errorf("failed to parse monitor ID %s to integer", md.Attributes.OwnerID)
+				}
+				return monitorID, nil
+			}
+		}
+		if !metadataResponse.HasNext() {
+			break
+		}
+		metadataResponse, err = metadataResponse.Next(b.httpClient)
+		if err != nil {
+			return p.CheckNotFound, err
+		}
 	}
-	return result, nil
-}
-
-func (b *BetterStack) execRequest(req *http.Request) (*http.Response, error) {
-	req.Header.Add(providers.HeaderAuthorization, "Bearer "+b.settings.APIToken)
-	return b.httpClient.Do(req)
+	return p.CheckNotFound, nil
 }
