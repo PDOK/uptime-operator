@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/PDOK/uptime-operator/internal/service"
+	p "github.com/PDOK/uptime-operator/internal/service/providers"
 	"github.com/PDOK/uptime-operator/internal/service/providers/betterstack"
 	"github.com/PDOK/uptime-operator/internal/service/providers/pingdom"
 	"github.com/PDOK/uptime-operator/internal/util"
@@ -131,10 +132,10 @@ func main() {
 	}
 
 	var uptimeProviderSettings any
-	uptimeProviderID := service.UptimeProviderID(uptimeProvider)
+	uptimeProviderID := p.UptimeProviderID(uptimeProvider)
 
 	// Optional provider specific flag handling
-	if uptimeProviderID == service.ProviderPingdom {
+	if uptimeProviderID == p.ProviderPingdom {
 		alertUserIDs, err := util.StringsToInts(pingdomAlertUserIDs)
 		if err != nil {
 			setupLog.Error(err, "Unable to parse 'pingdom-alert-user-ids' flag")
@@ -150,7 +151,7 @@ func main() {
 			UserIDs:        alertUserIDs,
 			IntegrationIDs: alertIntegrationIDs,
 		}
-	} else if uptimeProviderID == service.ProviderBetterStack {
+	} else if uptimeProviderID == p.ProviderBetterStack {
 		uptimeProviderSettings = betterstack.Settings{
 			APIToken: betterstackAPIToken,
 		}

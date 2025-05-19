@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const pingdomURL = "https://api.pingdop.com/api/3.1/checks"
+const pingdomURL = "https://api.pingdom.com/api/3.1/checks"
 const customIDPrefix = "id:"
 
 const headerReqLimitShort = "Req-Limit-Short"
@@ -214,7 +214,7 @@ func (p *Pingdom) checkToJSON(check model.UptimeCheck, includeType bool) ([]byte
 		"tags":       check.Tags,
 	}
 	if includeType {
-		// update messages shouldn't include 'type', since the type of check can't be modified in Pingdop.
+		// update messages shouldn't include 'type', since the type of check can't be modified in Pingdom.
 		message["type"] = "http"
 	}
 	if len(p.settings.UserIDs) > 0 {
