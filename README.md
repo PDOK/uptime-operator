@@ -62,44 +62,46 @@ USAGE:
    <uptime-controller-manager> [OPTIONS]
 
 OPTIONS:
+  -betterstack-api-token string
+    	The API token to authenticate with Better Stack. Only applies when 'uptime-provider' is 'betterstack'
   -enable-deletes
-        Allow the operator to delete checks from the uptime provider when ingress routes are removed.
+    	Allow the operator to delete checks from the uptime provider when ingress routes are removed.
   -enable-http2
-        If set, HTTP/2 will be enabled for the metrics and webhook servers.
+    	If set, HTTP/2 will be enabled for the metrics and webhook servers.
   -health-probe-bind-address string
-        The address the probe endpoint binds to. (default ":8081")
+    	The address the probe endpoint binds to. (default ":8081")
   -kubeconfig string
-        Paths to a kubeconfig. Only required if out-of-cluster.
+    	Paths to a kubeconfig. Only required if out-of-cluster.
   -leader-elect
-        Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
+    	Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
   -metrics-bind-address string
-        The address the metric endpoint binds to. (default ":8080")
+    	The address the metric endpoint binds to. (default ":8080")
   -metrics-secure
-        If set the metrics endpoint is served securely.
+    	If set the metrics endpoint is served securely.
   -namespace value
-        Namespace(s) to watch for changes. Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.
+    	Namespace(s) to watch for changes. Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.
   -pingdom-alert-integration-ids value
-        One or more IDs of Pingdom integrations (like slack channels) to alert. Only applies when 'uptime-provider' is 'pingdom'
+    	One or more IDs of Pingdom integrations (like slack channels) to alert. Only applies when 'uptime-provider' is 'pingdom'
   -pingdom-alert-user-ids value
-        One or more IDs of Pingdom users to alert. Only applies when 'uptime-provider' is 'pingdom'
+    	One or more IDs of Pingdom users to alert. Only applies when 'uptime-provider' is 'pingdom'
   -pingdom-api-token string
-        The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'
+    	The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'
   -slack-channel string
-        The Slack Channel ID for posting updates when uptime checks are mutated.
+    	The Slack Channel ID for posting updates when uptime checks are mutated.
   -slack-webhook-url string
-        The webhook URL required to post messages to the given Slack channel.
+    	The webhook URL required to post messages to the given Slack channel.
   -uptime-provider string
-        Name of the (SaaS) uptime monitoring provider to use. (default "mock")
+    	Name of the (SaaS) uptime monitoring provider to use. (default "mock")
   -zap-devel
-        Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error) (default true)
+    	Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error) (default true)
   -zap-encoder value
-        Zap log encoding (one of 'json' or 'console')
+    	Zap log encoding (one of 'json' or 'console')
   -zap-log-level value
-        Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
+    	Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
   -zap-stacktrace-level value
-        Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
+    	Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
   -zap-time-encoding value
-        Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
+    	Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
 ```
 
 ## Develop

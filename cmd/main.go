@@ -70,10 +70,10 @@ func main() {
 	var slackWebhookURL string
 	var enableDeletes bool
 	var uptimeProvider string
-	var uptimeProviderAPIToken string
 	var pingdomAPIToken string
 	var pingdomAlertUserIDs util.SliceFlag
 	var pingdomAlertIntegrationIDs util.SliceFlag
+	var betterstackAPIToken string
 
 	// Default kubebuilder
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
@@ -97,20 +97,20 @@ func main() {
 		"The Slack Channel ID for posting updates when uptime checks are mutated.")
 	flag.StringVar(&slackWebhookURL, "slack-webhook-url", "",
 		"The webhook URL required to post messages to the given Slack channel.")
-
-	// General uptime provider
 	flag.StringVar(&uptimeProvider, "uptime-provider", "mock",
 		"Name of the (SaaS) uptime monitoring provider to use.")
-	flag.StringVar(&uptimeProviderAPIToken, "uptime-provider-api-token", "",
-		"The API token to authenticate with the (SaaS) uptime  monitoring provider.")
 
 	// Pingdom specific
 	flag.StringVar(&pingdomAPIToken, "pingdom-api-token", "",
-		"DEPRECATED: use 'uptime-provider-api-token' instead. The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'")
+		"The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'")
 	flag.Var(&pingdomAlertUserIDs, "pingdom-alert-user-ids",
 		"One or more IDs of Pingdom users to alert. Only applies when 'uptime-provider' is 'pingdom'")
 	flag.Var(&pingdomAlertIntegrationIDs, "pingdom-alert-integration-ids",
 		"One or more IDs of Pingdom integrations (like slack channels) to alert. Only applies when 'uptime-provider' is 'pingdom'")
+
+	// Better Stack specific
+	flag.StringVar(&betterstackAPIToken, "betterstack-api-token", "",
+		"The API token to authenticate with Better Stack. Only applies when 'uptime-provider' is 'betterstack'")
 
 	opts := zap.Options{
 		Development: true,
@@ -132,6 +132,7 @@ func main() {
 	var uptimeProviderSettings any
 	uptimeProviderID := service.UptimeProviderID(uptimeProvider)
 
+	// Optional provider specific flag handling
 	if uptimeProviderID == service.ProviderPingdom {
 		alertUserIDs, err := util.StringsToInts(pingdomAlertUserIDs)
 		if err != nil {
@@ -143,22 +144,18 @@ func main() {
 			setupLog.Error(err, "Unable to parse 'pingdom-alert-integration-ids' flag")
 			os.Exit(1)
 		}
-		token := uptimeProviderAPIToken
-		if pingdomAPIToken == "" {
-			setupLog.Info("'pingdom-api-token' flag is deprecated, favor 'uptime-provider-api-token' instead")
-			token = pingdomAPIToken
-		}
 		uptimeProviderSettings = providers.PingdomSettings{
-			APIToken:       token,
+			APIToken:       pingdomAPIToken,
 			UserIDs:        alertUserIDs,
 			IntegrationIDs: alertIntegrationIDs,
 		}
 	} else if uptimeProviderID == service.ProviderBetterStack {
 		uptimeProviderSettings = providers.BetterStackSettings{
-			APIToken: uptimeProviderAPIToken,
+			APIToken: betterstackAPIToken,
 		}
 	}
 
+	// Setup controller
 	if err = (&controller.IngressRouteReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

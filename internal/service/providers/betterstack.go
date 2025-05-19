@@ -2,6 +2,8 @@ package providers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	classiclog "log"
 	"net/http"
 	"time"
@@ -10,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const betterstackBaseURL = "https://uptime.betterstack.com/api"
+const betterStackBaseURL = "https://uptime.betterstack.com"
 
 type BetterStackSettings struct {
 	APIToken string
@@ -43,4 +45,40 @@ func (m *BetterStackUptimeProvider) DeleteCheck(ctx context.Context, check model
 	log.FromContext(ctx).Info("deleting check", "check", check)
 	// TODO
 	return nil
+}
+
+func (m *BetterStackUptimeProvider) findCheck(ctx context.Context, check model.UptimeCheck) (int64, error) {
+	result := checkNotFound
+
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v3/metadata", betterStackBaseURL), nil)
+	if err != nil {
+		return result, err
+	}
+	req.Header.Add(headerAccept, "application/json")
+	resp, err := m.execRequest(req)
+	if err != nil {
+		return result, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return result, fmt.Errorf("got status %d, expected HTTP OK when listing metadata", resp.StatusCode)
+	}
+
+	metadataResponse := make(map[string]any)
+	err = json.NewDecoder(resp.Body).Decode(&metadataResponse)
+	if err != nil {
+		return result, err
+	}
+
+	metadata := metadataResponse["data"].([]any)
+	for _, metadataEntry := range metadata {
+		// TODO find pointer to monitor
+		println(metadataEntry)
+	}
+	return result, nil
+}
+
+func (m *BetterStackUptimeProvider) execRequest(req *http.Request) (*http.Response, error) {
+	req.Header.Add(headerAuthorization, "Bearer "+m.settings.APIToken)
+	return m.httpClient.Do(req)
 }
