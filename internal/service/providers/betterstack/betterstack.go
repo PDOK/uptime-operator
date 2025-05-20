@@ -1,10 +1,13 @@
 package betterstack
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	classiclog "log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -62,14 +65,14 @@ func New(settings Settings) *BetterStack {
 
 // CreateOrUpdateCheck create the given check with Better Stack, or update an existing check. Needs to be idempotent!
 func (b *BetterStack) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) (err error) {
-	existingCheckID, err := b.findCheck(ctx, check)
+	existingCheckID, err := b.findCheck(check)
 	if err != nil {
 		return err
 	}
 	if existingCheckID == p.CheckNotFound {
-		log.FromContext(ctx).Info("creating new check", "check", check)
+		err = b.createCheck(ctx, check)
 	} else {
-		log.FromContext(ctx).Info("updating existing check", "check", check)
+		err = b.updateCheck(ctx, check) // TODO implement with existingCheckID
 	}
 	return err
 }
@@ -77,45 +80,198 @@ func (b *BetterStack) CreateOrUpdateCheck(ctx context.Context, check model.Uptim
 // DeleteCheck deletes the given check from Better Stack
 func (b *BetterStack) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
 	log.FromContext(ctx).Info("deleting check", "check", check)
-	// TODO
-	return nil
-}
 
-func (b *BetterStack) findCheck(ctx context.Context, check model.UptimeCheck) (int64, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, betterStackBaseURL+"/api/v3/metadata", nil)
+	existingCheckID, err := b.findCheck(check)
 	if err != nil {
-		return p.CheckNotFound, err
+		return err
+	}
+	if existingCheckID == p.CheckNotFound {
+		log.FromContext(ctx).Info(fmt.Sprintf("check with ID '%s' is already deleted", check.ID))
+		return nil
+	}
+
+	metadataDeleteRequest := MetadataUpdateRequest{
+		Key:       check.ID,
+		OwnerID:   strconv.FormatInt(existingCheckID, 10),
+		OwnerType: "Monitor",
+		Values:    []MetadataValue{}, // empty values will result in delete of metadata record
+	}
+	body := &bytes.Buffer{}
+	err = json.NewEncoder(body).Encode(&metadataDeleteRequest)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPost, betterStackBaseURL+"/api/v3/metadata", body)
+	if err != nil {
+		return err
 	}
 	resp, err := b.httpClient.call(req)
 	if err != nil {
-		return p.CheckNotFound, err
+		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return p.CheckNotFound, fmt.Errorf("got status %d, expected %d when listing metadata", resp.StatusCode, http.StatusOK)
+	if resp.StatusCode != http.StatusNoContent {
+		result, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("got status %d, expected %d. Body: %s", resp.StatusCode, http.StatusNoContent, string(result))
 	}
-	var metadataResponse *MetadataListResponse
-	err = json.NewDecoder(resp.Body).Decode(&metadataResponse)
+
+	req, err = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/api/v2/monitors/%d", betterStackBaseURL, existingCheckID), nil)
 	if err != nil {
-		return p.CheckNotFound, err
+		return err
+	}
+	resp, err = b.httpClient.call(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		result, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("got status %d, expected %d. Body: %s", resp.StatusCode, http.StatusNoContent, string(result))
+	}
+
+	return nil
+}
+
+func (b *BetterStack) findCheck(check model.UptimeCheck) (int64, error) {
+	result := p.CheckNotFound
+	metadata, err := ListMetadata(b.httpClient)
+	if err != nil {
+		return result, err
 	}
 	for {
-		for _, md := range metadataResponse.Data {
-			if md.Attributes.Key == check.ID {
-				monitorID, err := strconv.ParseInt(md.Attributes.OwnerID, 10, 64)
+		for _, md := range metadata.Data {
+			if md.Attributes != nil && md.Attributes.Key == check.ID {
+				result, err = strconv.ParseInt(md.Attributes.OwnerID, 10, 64)
 				if err != nil {
-					return p.CheckNotFound, fmt.Errorf("failed to parse monitor ID %s to integer", md.Attributes.OwnerID)
+					return result, fmt.Errorf("failed to parse monitor ID %s to integer", md.Attributes.OwnerID)
 				}
-				return monitorID, nil
+				return result, nil
 			}
 		}
-		if !metadataResponse.HasNext() {
-			break
+		if !metadata.HasNext() {
+			break // exit infinite loop
 		}
-		metadataResponse, err = metadataResponse.Next(b.httpClient)
+		metadata, err = metadata.Next(b.httpClient)
 		if err != nil {
-			return p.CheckNotFound, err
+			return result, err
 		}
 	}
-	return p.CheckNotFound, nil
+	return result, nil
+}
+
+//nolint:funlen // TODO remove after refactor
+func (b *BetterStack) createCheck(ctx context.Context, check model.UptimeCheck) error {
+	log.FromContext(ctx).Info("creating check", "check", check)
+
+	// https://betterstack.com/docs/uptime/api/create-a-new-monitor/
+	var monitorCreateRequest MonitorCreateRequest
+	switch {
+	case check.StringContains != "":
+		monitorCreateRequest = MonitorCreateRequest{
+			MonitorType:     "keyword",
+			RequiredKeyword: check.StringContains,
+		}
+	case check.StringNotContains != "":
+		monitorCreateRequest = MonitorCreateRequest{
+			MonitorType:     "keyword_absence",
+			RequiredKeyword: check.StringNotContains,
+		}
+	default:
+		monitorCreateRequest = MonitorCreateRequest{
+			MonitorType: "status",
+		}
+	}
+	monitorCreateRequest.URL = check.URL
+	monitorCreateRequest.PronounceableName = check.Name
+	monitorCreateRequest.Port = 443
+	monitorCreateRequest.CheckFrequency = toSupportedInterval(check.Interval)
+	monitorCreateRequest.Email = false
+	monitorCreateRequest.Sms = false
+	monitorCreateRequest.Call = false
+
+	body := &bytes.Buffer{}
+	err := json.NewEncoder(body).Encode(monitorCreateRequest)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPost, betterStackBaseURL+"/api/v2/monitors", body)
+	if err != nil {
+		return err
+	}
+	resp, err := b.httpClient.call(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		result, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("got status %d, expected %d. Body: %s", resp.StatusCode, http.StatusCreated, string(result))
+	}
+
+	var monitorCreateResponse *MonitorCreateResponse
+	err = json.NewDecoder(resp.Body).Decode(&monitorCreateResponse)
+	if err != nil {
+		return err
+	}
+
+	metadataUpdateRequest := MetadataUpdateRequest{
+		Key:       check.ID,
+		OwnerID:   monitorCreateResponse.Data.ID,
+		OwnerType: "Monitor",
+	}
+	for _, tag := range check.Tags {
+		metadataUpdateRequest.Values = append(metadataUpdateRequest.Values, MetadataValue{tag})
+	}
+	body = &bytes.Buffer{}
+	err = json.NewEncoder(body).Encode(&metadataUpdateRequest)
+	if err != nil {
+		return err
+	}
+	req, err = http.NewRequest(http.MethodPost, betterStackBaseURL+"/api/v3/metadata", body)
+	if err != nil {
+		return err
+	}
+	resp, err = b.httpClient.call(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		result, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("got status %d, expected %d. Body: %s", resp.StatusCode, http.StatusCreated, string(result))
+	}
+
+	return nil
+}
+
+func (b *BetterStack) updateCheck(ctx context.Context, check model.UptimeCheck) error {
+	log.FromContext(ctx).Info("creating check", "check", check)
+
+	return nil
+}
+
+func toSupportedInterval(intervalInMin int) int {
+	// Better Stack only accepts a specific sets of intervals
+	supportedIntervals := []int{30, 45, 60, 120, 180, 300, 600, 900, 1800}
+
+	intervalInSec := intervalInMin * 60
+	if intervalInSec <= 0 {
+		return supportedIntervals[0] // use the smallest supported interval
+	}
+	if intervalInSec > supportedIntervals[len(supportedIntervals)-1] {
+		return supportedIntervals[len(supportedIntervals)-1] // use the largest supported interval
+	}
+
+	nearestInterval := supportedIntervals[0]
+	prevDiff := math.MaxInt
+
+	// use nearest supported interval
+	for _, si := range supportedIntervals {
+		diff := int(math.Abs(float64(intervalInSec - si)))
+		if diff < prevDiff {
+			prevDiff = diff
+			nearestInterval = si
+		}
+	}
+	return nearestInterval
 }
