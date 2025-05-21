@@ -250,6 +250,7 @@ func (b *BetterStack) createCheck(ctx context.Context, check model.UptimeCheck) 
 	return nil
 }
 
+//nolint:cyclop,funlen // TODO fix after refactor
 func (b *BetterStack) updateCheck(ctx context.Context, existingCheckID int64, check model.UptimeCheck) error {
 	log.FromContext(ctx).Info("updating check", "check", check, "betterstack ID", existingCheckID)
 

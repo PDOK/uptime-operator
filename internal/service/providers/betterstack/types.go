@@ -101,6 +101,7 @@ type MetadataUpdateRequest struct {
 	OwnerType string          `json:"owner_type"`
 }
 
+//nolint:tagliatelle
 type MonitorRequestHeader struct {
 	ID      string `json:"id,omitempty"`
 	Name    string `json:"name"`
