@@ -22,6 +22,7 @@ jobs:
         uses: nick-fields/retry@v3
         env:
           PINGDOM_API_TOKEN: ${{ secrets.PINGDOM_API_TOKEN }}
+          BETTERSTACK_API_TOKEN: ${{ secrets.BETTERSTACK_API_TOKEN }}
         with:
           timeout_minutes: 5
           max_attempts: 2
