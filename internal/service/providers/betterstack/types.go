@@ -37,7 +37,8 @@ type MetadataListResponse struct {
 }
 
 func ListMetadata(client httpClient) (*MetadataListResponse, error) {
-	req, err := http.NewRequest(http.MethodGet, betterStackBaseURL+"/api/v3/metadata?owner_type=Monitor", nil)
+	url := fmt.Sprintf("%s/api/v3/metadata?owner_type=Monitor&per_page=%d", betterStackBaseURL, client.settings.PageSize)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}

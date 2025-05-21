@@ -44,6 +44,7 @@ func (h httpClient) get(url string) (*http.Response, error) {
 
 type Settings struct {
 	APIToken string
+	PageSize int
 }
 
 type BetterStack struct {
@@ -54,6 +55,9 @@ type BetterStack struct {
 func New(settings Settings) *BetterStack {
 	if settings.APIToken == "" {
 		classiclog.Fatal("Better Stack API token is not provided")
+	}
+	if settings.PageSize < 1 {
+		settings.PageSize = 50 // def
 	}
 	return &BetterStack{
 		httpClient: httpClient{
