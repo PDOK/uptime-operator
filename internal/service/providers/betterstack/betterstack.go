@@ -26,8 +26,8 @@ type httpClient struct {
 
 func (h httpClient) call(req *http.Request) (*http.Response, error) {
 	req.Header.Set(p.HeaderAuthorization, "Bearer "+h.settings.APIToken)
-	req.Header.Set(p.HeaderAccept, "application/json")
-	req.Header.Set(p.HeaderContentType, "application/json")
+	req.Header.Set(p.HeaderAccept, p.MediaTypeJSON)
+	req.Header.Set(p.HeaderContentType, p.MediaTypeJSON)
 	return h.client.Do(req)
 }
 
@@ -37,8 +37,8 @@ func (h httpClient) get(url string) (*http.Response, error) {
 		return nil, err
 	}
 	req.Header.Set(p.HeaderAuthorization, "Bearer "+h.settings.APIToken)
-	req.Header.Set(p.HeaderAccept, "application/json")
-	req.Header.Set(p.HeaderContentType, "application/json")
+	req.Header.Set(p.HeaderAccept, p.MediaTypeJSON)
+	req.Header.Set(p.HeaderContentType, p.MediaTypeJSON)
 	return h.client.Do(req)
 }
 
@@ -72,7 +72,7 @@ func (b *BetterStack) CreateOrUpdateCheck(ctx context.Context, check model.Uptim
 	if existingCheckID == p.CheckNotFound {
 		err = b.createCheck(ctx, check)
 	} else {
-		err = b.updateCheck(ctx, check) // TODO implement with existingCheckID
+		err = b.updateCheck(ctx, existingCheckID, check)
 	}
 	return err
 }
@@ -188,6 +188,12 @@ func (b *BetterStack) createCheck(ctx context.Context, check model.UptimeCheck) 
 	monitorCreateRequest.Email = false
 	monitorCreateRequest.Sms = false
 	monitorCreateRequest.Call = false
+	for name, value := range check.RequestHeaders {
+		monitorCreateRequest.RequestHeaders = append(monitorCreateRequest.RequestHeaders, MonitorRequestHeader{
+			Name:  name,
+			Value: value,
+		})
+	}
 
 	body := &bytes.Buffer{}
 	err := json.NewEncoder(body).Encode(monitorCreateRequest)
@@ -244,9 +250,114 @@ func (b *BetterStack) createCheck(ctx context.Context, check model.UptimeCheck) 
 	return nil
 }
 
-func (b *BetterStack) updateCheck(ctx context.Context, check model.UptimeCheck) error {
-	log.FromContext(ctx).Info("creating check", "check", check)
+func (b *BetterStack) updateCheck(ctx context.Context, existingCheckID int64, check model.UptimeCheck) error {
+	log.FromContext(ctx).Info("updating check", "check", check, "betterstack ID", existingCheckID)
 
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v2/monitors/%d", betterStackBaseURL, existingCheckID), nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := b.httpClient.call(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("got status %d, expected %d", resp.StatusCode, http.StatusOK)
+	}
+
+	// Parse response
+	var existingMonitor MonitorGetResponse
+	err = json.NewDecoder(resp.Body).Decode(&existingMonitor)
+	if err != nil {
+		return err
+	}
+
+	// Update monitor
+	var updateRequest MonitorUpdateRequest
+	switch {
+	case check.StringContains != "":
+		updateRequest = MonitorUpdateRequest{
+			MonitorType:     "keyword",
+			RequiredKeyword: check.StringContains,
+		}
+	case check.StringNotContains != "":
+		updateRequest = MonitorUpdateRequest{
+			MonitorType:     "keyword_absence",
+			RequiredKeyword: check.StringNotContains,
+		}
+	default:
+		updateRequest = MonitorUpdateRequest{
+			MonitorType: "status",
+		}
+	}
+	updateRequest.URL = check.URL
+	updateRequest.PronounceableName = check.Name
+	updateRequest.Port = 443
+	updateRequest.CheckFrequency = toSupportedInterval(check.Interval)
+	updateRequest.Email = false
+	updateRequest.Sms = false
+	updateRequest.Call = false
+	// Add (new) headers
+	for name, value := range check.RequestHeaders {
+		updateRequest.RequestHeaders = append(updateRequest.RequestHeaders, MonitorRequestHeader{
+			Name:  name,
+			Value: value,
+		})
+	}
+	// Remove all existing headers
+	for _, existingHeader := range existingMonitor.Data.Attributes.RequestHeaders {
+		updateRequest.RequestHeaders = append(updateRequest.RequestHeaders, MonitorRequestHeader{
+			ID:      existingHeader.ID,
+			Destroy: true,
+		})
+	}
+	body := &bytes.Buffer{}
+	err = json.NewEncoder(body).Encode(&updateRequest)
+	if err != nil {
+		return err
+	}
+	req, err = http.NewRequest(http.MethodPatch, fmt.Sprintf("%s/api/v2/monitors/%d", betterStackBaseURL, existingCheckID), body)
+	if err != nil {
+		return err
+	}
+	resp, err = b.httpClient.call(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("got status %d, expected %d", resp.StatusCode, http.StatusOK)
+	}
+
+	// Update tags metadata
+	metadataUpdateRequest := MetadataUpdateRequest{
+		Key:       check.ID,
+		OwnerID:   strconv.FormatInt(existingCheckID, 10),
+		OwnerType: "Monitor",
+	}
+	for _, tag := range check.Tags {
+		metadataUpdateRequest.Values = append(metadataUpdateRequest.Values, MetadataValue{tag})
+	}
+	body = &bytes.Buffer{}
+	err = json.NewEncoder(body).Encode(&metadataUpdateRequest)
+	if err != nil {
+		return err
+	}
+	req, err = http.NewRequest(http.MethodPost, betterStackBaseURL+"/api/v3/metadata", body)
+	if err != nil {
+		return err
+	}
+	resp, err = b.httpClient.call(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		result, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("got status %d, expected %d. Body: %s", resp.StatusCode, http.StatusCreated, string(result))
+	}
 	return nil
 }
 

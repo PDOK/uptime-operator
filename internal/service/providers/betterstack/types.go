@@ -101,26 +101,60 @@ type MetadataUpdateRequest struct {
 	OwnerType string          `json:"owner_type"`
 }
 
+type MonitorRequestHeader struct {
+	ID      string `json:"id,omitempty"`
+	Name    string `json:"name"`
+	Value   string `json:"value"`
+	Destroy bool   `json:"_destroy"`
+}
+
 //nolint:tagliatelle
 type MonitorCreateRequest struct {
-	MonitorType       string `json:"monitor_type"`
-	URL               string `json:"url"`
-	PronounceableName string `json:"pronounceable_name"`
-	Port              int    `json:"port"`
-	Email             bool   `json:"email"`
-	Sms               bool   `json:"sms"`
-	Call              bool   `json:"call"`
-	RequiredKeyword   string `json:"required_keyword"`
-	CheckFrequency    int    `json:"check_frequency"`
-	RequestHeaders    []struct {
-		Name  string `json:"name"`
-		Value string `json:"value"`
-	} `json:"request_headers"`
+	MonitorType       string                 `json:"monitor_type"`
+	URL               string                 `json:"url"`
+	PronounceableName string                 `json:"pronounceable_name"`
+	Port              int                    `json:"port"`
+	Email             bool                   `json:"email"`
+	Sms               bool                   `json:"sms"`
+	Call              bool                   `json:"call"`
+	RequiredKeyword   string                 `json:"required_keyword"`
+	CheckFrequency    int                    `json:"check_frequency"`
+	RequestHeaders    []MonitorRequestHeader `json:"request_headers"`
 }
 
 type MonitorCreateResponse struct {
 	Data struct {
 		ID   string `json:"id"`
 		Type string `json:"type"`
+	} `json:"data"`
+}
+
+//nolint:tagliatelle
+type MonitorUpdateRequest struct {
+	MonitorType       string                 `json:"monitor_type,omitempty"`
+	URL               string                 `json:"url,omitempty"`
+	PronounceableName string                 `json:"pronounceable_name,omitempty"`
+	Port              int                    `json:"port,omitempty"`
+	Email             bool                   `json:"email,omitempty"`
+	Sms               bool                   `json:"sms,omitempty"`
+	Call              bool                   `json:"call,omitempty"`
+	RequiredKeyword   string                 `json:"required_keyword,omitempty"`
+	CheckFrequency    int                    `json:"check_frequency,omitempty"`
+	RequestHeaders    []MonitorRequestHeader `json:"request_headers,omitempty"`
+}
+
+//nolint:tagliatelle
+type MonitorGetResponse struct {
+	Data *struct {
+		ID         string `json:"id"`
+		Type       string `json:"type"`
+		Attributes *struct {
+			URL               string                 `json:"url"`
+			PronounceableName string                 `json:"pronounceable_name"`
+			MonitorType       string                 `json:"monitor_type"`
+			RequiredKeyword   string                 `json:"required_keyword"`
+			CheckFrequency    int                    `json:"check_frequency"`
+			RequestHeaders    []MonitorRequestHeader `json:"request_headers"`
+		} `json:"attributes"`
 	} `json:"data"`
 }

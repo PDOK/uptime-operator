@@ -99,7 +99,7 @@ func (p *Pingdom) findCheck(ctx context.Context, check model.UptimeCheck) (int64
 	if err != nil {
 		return result, err
 	}
-	req.Header.Add(providers.HeaderAccept, "application/json")
+	req.Header.Add(providers.HeaderAccept, providers.MediaTypeJSON)
 	resp, err := p.execRequest(ctx, req)
 	if err != nil {
 		return result, err
@@ -246,7 +246,7 @@ func (p *Pingdom) checkToJSON(check model.UptimeCheck, includeType bool) ([]byte
 }
 
 func (p *Pingdom) execRequestWithBody(ctx context.Context, req *http.Request) error {
-	req.Header.Add(providers.HeaderContentType, "application/json")
+	req.Header.Add(providers.HeaderContentType, providers.MediaTypeJSON)
 	resp, err := p.execRequest(ctx, req)
 	if err != nil {
 		return err

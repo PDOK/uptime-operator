@@ -2,6 +2,7 @@ package providers
 
 const (
 	CheckNotFound = int64(-1)
+	MediaTypeJSON = "application/json"
 
 	HeaderAuthorization = "Authorization"
 	HeaderAccept        = "Accept"
