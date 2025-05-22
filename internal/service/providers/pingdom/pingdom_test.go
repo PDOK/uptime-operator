@@ -1,4 +1,4 @@
-package providers
+package pingdom
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/PDOK/uptime-operator/internal/model"
+	"github.com/PDOK/uptime-operator/internal/service/providers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -76,7 +77,7 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 				"integration test against the REAL pingdom API.")
 		}
 		t.Run(tt.name, func(t *testing.T) {
-			settings := PingdomSettings{APIToken: os.Getenv("PINGDOM_API_TOKEN")}
+			settings := Settings{APIToken: os.Getenv("PINGDOM_API_TOKEN")}
 
 			if os.Getenv("PINGDOM_USER_ID") != "" {
 				userID, _ := strconv.Atoi(os.Getenv("PINGDOM_USER_ID"))
@@ -88,7 +89,7 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 			}
 
 			// create/update/delete actual check with REAL pingdom API.
-			m := NewPingdomUptimeProvider(settings)
+			m := New(settings)
 			check, err := model.NewUptimeCheck("foo", tt.annotations)
 			assert.NoError(t, err)
 			if tt.wantDelete {
@@ -100,7 +101,7 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 
 				existingCheckID, err := m.findCheck(context.TODO(), *check)
 				assert.NoError(t, err)
-				assert.Equal(t, checkNotFound, existingCheckID)
+				assert.Equal(t, providers.CheckNotFound, existingCheckID)
 			} else {
 				if err := m.CreateOrUpdateCheck(context.TODO(), *check); (err != nil) != tt.wantErr {
 					t.Errorf("CreateOrUpdateCheck() error = %v, wantErr %v", err, tt.wantErr)

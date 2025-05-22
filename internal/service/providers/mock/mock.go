@@ -1,4 +1,4 @@
-package providers
+package mock
 
 import (
 	"context"
@@ -9,17 +9,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type MockUptimeProvider struct {
+type Mock struct {
 	checks map[string]model.UptimeCheck
 }
 
-func NewMockUptimeProvider() *MockUptimeProvider {
-	return &MockUptimeProvider{
+func New() *Mock {
+	return &Mock{
 		checks: make(map[string]model.UptimeCheck),
 	}
 }
 
-func (m *MockUptimeProvider) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) error {
+func (m *Mock) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) error {
 	m.checks[check.ID] = check
 
 	checkJSON, _ := json.Marshal(check)
@@ -28,7 +28,7 @@ func (m *MockUptimeProvider) CreateOrUpdateCheck(ctx context.Context, check mode
 	return nil
 }
 
-func (m *MockUptimeProvider) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
+func (m *Mock) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
 	delete(m.checks, check.ID)
 
 	checkJSON, _ := json.Marshal(check)
