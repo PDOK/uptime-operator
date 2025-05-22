@@ -30,7 +30,7 @@ func New(settings Settings) *BetterStack {
 		classiclog.Fatal("Better Stack API token is not provided")
 	}
 	if settings.PageSize < 1 {
-		settings.PageSize = 50 // def
+		settings.PageSize = 50 // default https://betterstack.com/docs/uptime/api/pagination/
 	}
 	return &BetterStack{
 		Client{
