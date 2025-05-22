@@ -7,6 +7,7 @@ const (
 	HeaderAuthorization = "Authorization"
 	HeaderAccept        = "Accept"
 	HeaderContentType   = "Content-Type"
+	HeaderUserAgent     = "User-Agent"
 )
 
 // UptimeProviderID enum of supported providers

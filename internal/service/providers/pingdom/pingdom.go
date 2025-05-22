@@ -261,6 +261,7 @@ func (p *Pingdom) execRequestWithBody(ctx context.Context, req *http.Request) er
 
 func (p *Pingdom) execRequest(ctx context.Context, req *http.Request) (*http.Response, error) {
 	req.Header.Add(providers.HeaderAuthorization, "Bearer "+p.settings.APIToken)
+	req.Header.Add(providers.HeaderUserAgent, model.OperatorName)
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
 		return resp, err
