@@ -15,38 +15,13 @@ import (
 
 const betterStackBaseURL = "https://uptime.betterstack.com"
 
-type httpClient struct {
-	client   *http.Client
-	settings Settings
-}
-
-func (h httpClient) call(req *http.Request) (*http.Response, error) {
-	req.Header.Set(p.HeaderAuthorization, "Bearer "+h.settings.APIToken)
-	req.Header.Set(p.HeaderAccept, p.MediaTypeJSON)
-	req.Header.Set(p.HeaderContentType, p.MediaTypeJSON)
-	req.Header.Add(p.HeaderUserAgent, model.OperatorName)
-	return h.client.Do(req)
-}
-
-func (h httpClient) get(url string) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set(p.HeaderAuthorization, "Bearer "+h.settings.APIToken)
-	req.Header.Set(p.HeaderAccept, p.MediaTypeJSON)
-	req.Header.Set(p.HeaderContentType, p.MediaTypeJSON)
-	req.Header.Add(p.HeaderUserAgent, model.OperatorName)
-	return h.client.Do(req)
-}
-
 type Settings struct {
 	APIToken string
 	PageSize int
 }
 
 type BetterStack struct {
-	httpClient httpClient
+	client Client
 }
 
 // New creates a BetterStack
@@ -58,9 +33,9 @@ func New(settings Settings) *BetterStack {
 		settings.PageSize = 50 // def
 	}
 	return &BetterStack{
-		httpClient: httpClient{
-			client:   &http.Client{Timeout: time.Duration(5) * time.Minute},
-			settings: settings,
+		Client{
+			httpClient: &http.Client{Timeout: time.Duration(5) * time.Minute},
+			settings:   settings,
 		},
 	}
 }
@@ -71,17 +46,27 @@ func (b *BetterStack) CreateOrUpdateCheck(ctx context.Context, check model.Uptim
 	if err != nil {
 		return err
 	}
-	if existingCheckID == p.CheckNotFound {
+	if existingCheckID == p.CheckNotFound { //nolint:nestif // clean enough
 		log.FromContext(ctx).Info("creating check", "check", check)
-		monitorID, err := CreateMonitor(b.httpClient, check)
+		monitorID, err := b.client.createMonitor(check)
 		if err != nil {
 			return err
 		}
-		if err = CreateOrUpdateMetadata(b.httpClient, check.ID, monitorID, check.Tags); err != nil {
+		if err = b.client.createMetadata(check.ID, monitorID, check.Tags); err != nil {
 			return err
 		}
 	} else {
-		err = b.updateCheck(ctx, existingCheckID, check)
+		log.FromContext(ctx).Info("updating check", "check", check, "betterstack ID", existingCheckID)
+		existingMonitor, err := b.client.GetMonitor(existingCheckID)
+		if err != nil {
+			return err
+		}
+		if err = b.client.updateMonitor(check, existingMonitor); err != nil {
+			return err
+		}
+		if err = b.client.updateMetadata(check.ID, existingCheckID, check.Tags); err != nil {
+			return err
+		}
 	}
 	return err
 }
@@ -98,10 +83,10 @@ func (b *BetterStack) DeleteCheck(ctx context.Context, check model.UptimeCheck) 
 		log.FromContext(ctx).Info(fmt.Sprintf("check with ID '%s' is already deleted", check.ID))
 		return nil
 	}
-	if err = DeleteMetadata(b.httpClient, check.ID, existingCheckID); err != nil {
+	if err = b.client.deleteMetadata(check.ID, existingCheckID); err != nil {
 		return err
 	}
-	if err = DeleteMonitor(b.httpClient, existingCheckID); err != nil {
+	if err = b.client.deleteMonitor(existingCheckID); err != nil {
 		return err
 	}
 	return nil
@@ -109,7 +94,7 @@ func (b *BetterStack) DeleteCheck(ctx context.Context, check model.UptimeCheck) 
 
 func (b *BetterStack) findCheck(check model.UptimeCheck) (int64, error) {
 	result := p.CheckNotFound
-	metadata, err := ListMetadata(b.httpClient)
+	metadata, err := b.client.listMetadata()
 	if err != nil {
 		return result, err
 	}
@@ -126,27 +111,10 @@ func (b *BetterStack) findCheck(check model.UptimeCheck) (int64, error) {
 		if !metadata.HasNext() {
 			break // exit infinite loop
 		}
-		metadata, err = metadata.Next(b.httpClient)
+		metadata, err = metadata.Next(b.client)
 		if err != nil {
 			return result, err
 		}
 	}
 	return result, nil
-}
-
-func (b *BetterStack) updateCheck(ctx context.Context, existingCheckID int64, check model.UptimeCheck) error {
-	log.FromContext(ctx).Info("updating check", "check", check, "betterstack ID", existingCheckID)
-
-	existingMonitor, err := GetMonitor(b.httpClient, existingCheckID)
-	if err != nil {
-		return err
-	}
-	if err = UpdateMonitor(b.httpClient, check, existingMonitor); err != nil {
-		return err
-	}
-	// Update tags in particular (note: existing tags will be overwritten, old tags won't be deleted)
-	if err = CreateOrUpdateMetadata(b.httpClient, check.ID, existingCheckID, check.Tags); err != nil {
-		return err
-	}
-	return nil
 }
