@@ -47,6 +47,10 @@ linters-settings:
   gomoddirectives:
     replace-allow-list:
       - github.com/abbot/go-http-auth
+  tagliatelle:
+    case:
+      rules:
+        json: snake  # since betterstack uses snake instead of camel case for JSON
 
 linters:
   disable-all: true

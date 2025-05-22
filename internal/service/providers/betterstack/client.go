@@ -31,16 +31,13 @@ func (h Client) execRequest(req *http.Request, expectedStatus int) (*http.Respon
 	}
 	if resp.StatusCode != expectedStatus {
 		defer resp.Body.Close()
-		var result []byte
-		if resp.Body != nil {
-			result, _ = io.ReadAll(resp.Body)
-		}
-		return nil, fmt.Errorf("got status %d, expected %d. Body: %s", resp.StatusCode, expectedStatus, string(result))
+		result, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("got status %d, expected %d. Body: %b", resp.StatusCode, expectedStatus, result)
 	}
-	return resp, nil // caller should close resp.Body
+	return resp, nil // caller should close resp.Body!
 }
 
-func (h Client) execRequestIgnoreBody(req *http.Request, expectedStatus int) error {
+func (h Client) execRequestIgnoreResponseBody(req *http.Request, expectedStatus int) error {
 	resp, err := h.execRequest(req, expectedStatus)
 	if err != nil {
 		return err
@@ -49,7 +46,6 @@ func (h Client) execRequestIgnoreBody(req *http.Request, expectedStatus int) err
 	return nil
 }
 
-//nolint:tagliatelle
 type MetadataListResponse struct {
 	Data []struct {
 		ID         string `json:"id"`
@@ -131,7 +127,6 @@ type MetadataValue struct {
 	Value string `json:"value"`
 }
 
-//nolint:tagliatelle
 type MetadataUpdateRequest struct {
 	Key       string          `json:"key"`
 	Values    []MetadataValue `json:"values"`
@@ -158,7 +153,7 @@ func (h Client) createMetadata(key string, monitorID int64, tags []string) error
 	if err != nil {
 		return err
 	}
-	if err := h.execRequestIgnoreBody(req, http.StatusCreated); err != nil {
+	if err := h.execRequestIgnoreResponseBody(req, http.StatusCreated); err != nil {
 		return err
 	}
 	return nil
@@ -183,7 +178,7 @@ func (h Client) updateMetadata(key string, monitorID int64, tags []string) error
 	if err != nil {
 		return err
 	}
-	if err = h.execRequestIgnoreBody(req, http.StatusOK); err != nil {
+	if err = h.execRequestIgnoreResponseBody(req, http.StatusOK); err != nil {
 		return err
 	}
 	return nil
@@ -206,21 +201,19 @@ func (h Client) deleteMetadata(key string, monitorID int64) error {
 	if err != nil {
 		return err
 	}
-	if err = h.execRequestIgnoreBody(req, http.StatusNoContent); err != nil {
+	if err = h.execRequestIgnoreResponseBody(req, http.StatusNoContent); err != nil {
 		return err
 	}
 	return nil
 }
 
-//nolint:tagliatelle
 type MonitorRequestHeader struct {
 	ID      string `json:"id,omitempty"`
 	Name    string `json:"name"`
 	Value   string `json:"value"`
-	Destroy bool   `json:"_destroy"`
+	Destroy bool   `json:"_destroy"` //nolint:tagliatelle
 }
 
-//nolint:tagliatelle
 type MonitorCreateOrUpdateRequest struct {
 	MonitorType       string                 `json:"monitor_type"`
 	URL               string                 `json:"url"`
@@ -295,7 +288,7 @@ func (h Client) updateMonitor(check model.UptimeCheck, existingMonitor *MonitorG
 	if err != nil {
 		return err
 	}
-	if err = h.execRequestIgnoreBody(req, http.StatusOK); err != nil {
+	if err = h.execRequestIgnoreResponseBody(req, http.StatusOK); err != nil {
 		return err
 	}
 	return nil
@@ -307,13 +300,12 @@ func (h Client) deleteMonitor(monitorID int64) error {
 	if err != nil {
 		return err
 	}
-	if err = h.execRequestIgnoreBody(req, http.StatusNoContent); err != nil {
+	if err = h.execRequestIgnoreResponseBody(req, http.StatusNoContent); err != nil {
 		return err
 	}
 	return nil
 }
 
-//nolint:tagliatelle
 type MonitorGetResponse struct {
 	Data *struct {
 		ID         string `json:"id"`
@@ -329,7 +321,7 @@ type MonitorGetResponse struct {
 	} `json:"data"`
 }
 
-func (h Client) GetMonitor(monitorID int64) (*MonitorGetResponse, error) {
+func (h Client) getMonitor(monitorID int64) (*MonitorGetResponse, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api/v2/monitors/%d", betterStackBaseURL, monitorID), nil)
 	if err != nil {
 		return nil, err

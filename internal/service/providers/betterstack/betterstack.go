@@ -57,7 +57,7 @@ func (b *BetterStack) CreateOrUpdateCheck(ctx context.Context, check model.Uptim
 		}
 	} else {
 		log.FromContext(ctx).Info("updating check", "check", check, "betterstack ID", existingCheckID)
-		existingMonitor, err := b.client.GetMonitor(existingCheckID)
+		existingMonitor, err := b.client.getMonitor(existingCheckID)
 		if err != nil {
 			return fmt.Errorf("failed to get monitor for check %s, error: %w", check.ID, err)
 		}
