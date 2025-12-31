@@ -113,6 +113,11 @@ The project is written in Go and scaffolded with [kubebuilder](https://kubebuild
 Read the manual when you want/need to make changes.
 E.g. run `make test` before committing.
 
+To update the scaffolding:
+- Install the latest version of kubebuilder on your machine;
+- Run `kubebuilder alpha update --from-branch master`;
+- The command will probably fail because of merge conflicts and asks you to resolve them and then run `make vet fmt generate <some other commands>`. This is not a problem. Resolve the merge conflicts and run the `make` command.
+
 ### Linting
 
 Install [golangci-lint](https://golangci-lint.run/usage/install/) and run `golangci-lint run`
