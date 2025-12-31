@@ -5,28 +5,16 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - traefik.io.pdok.nl
+  - traefik.io
   resources:
   - ingressroutes
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
-  - traefik.io.pdok.nl
+  - traefik.io
   resources:
   - ingressroutes/finalizers
   verbs:
-  - update
-- apiGroups:
-  - traefik.io.pdok.nl
-  resources:
-  - ingressroutes/status
-  verbs:
-  - get
-  - patch
   - update

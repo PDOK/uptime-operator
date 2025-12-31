@@ -1,135 +1,163 @@
 # uptime-operator
-// TODO(user): Add simple overview of use/purpose
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+[![Build](https://github.com/PDOK/uptime-operator/actions/workflows/build-and-publish-image.yml/badge.svg)](https://github.com/PDOK/uptime-operator/actions/workflows/build-and-publish-image.yml)
+[![Lint (go)](https://github.com/PDOK/uptime-operator/actions/workflows/lint-go.yml/badge.svg)](https://github.com/PDOK/uptime-operator/actions/workflows/lint-go.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/PDOK/uptime-operator)](https://goreportcard.com/report/github.com/PDOK/uptime-operator)
+[![Coverage (go)](https://github.com/PDOK/uptime-operator/wiki/coverage.svg)](https://raw.githack.com/wiki/PDOK/uptime-operator/coverage.html)
+[![GitHub license](https://img.shields.io/github/license/PDOK/uptime-operator)](https://github.com/PDOK/uptime-operator/blob/master/LICENSE)
+[![Docker Pulls](https://img.shields.io/docker/pulls/pdok/uptime-operator.svg)](https://hub.docker.com/r/pdok/uptime-operator)
 
-## Getting Started
+Kubernetes Operator to watch [Traefik](https://github.com/traefik/traefik) IngressRoute(s) and register these with a (SaaS) uptime monitoring provider.
+Currently supported providers are:
+- [Pingdom](https://www.pingdom.com/)
+- [Better Stack](https://betterstack.com/)
+- Mock (for testing purposes)
 
-### Prerequisites
-- go version v1.23.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+Submit a PR when you wish to add another provider!
 
-### To Deploy on the cluster
-**Build and push your image to the location specified by `IMG`:**
+## Annotations
 
-```sh
-make docker-build docker-push IMG=<some-registry>/uptime-operator:tag
+Traefik `IngressRoute` resources should be annotated in order to successfully register an uptime check. For example:
+
+```yaml
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: my-sweet-route
+  annotations:
+    uptime.pdok.nl/id: "Random string to uniquely identify this check with the provider"
+    uptime.pdok.nl/name: "Logical name of the check"
+    uptime.pdok.nl/url: "https://site.example/service/wms/v1_0"
+    uptime.pdok.nl/tags: "metadata,separated,by,commas"
+    uptime.pdok.nl/interval-in-minutes: "5"
+    uptime.pdok.nl/request-headers: "Accept: application/json, Accept-Language: en"
+    uptime.pdok.nl/response-check-for-string-contains: "It works!"
+    uptime.pdok.nl/response-check-for-string-not-contains: "NullPointerException"
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+The `id`, `name` and `url` annotations are mandatory, the rest is optional.
 
-**Install the CRDs into the cluster:**
+Only `traefik.io/v1alpha1` resources are supported (not the legacy `traefik.containo.us`).
 
-```sh
-make install
+### Ignoring routes
+
+To exclude a route from uptime monitoring you can explicitly add a `uptime.pdok.nl/ignore` annotation.
+The difference between a route without any annotation or a route with an `/ignore` annotation is that the 
+latter won't cause any error logging.
+
+## Run/usage
+
+```shell
+go build github.com/PDOK/uptime-operator/cmd -o manager
 ```
 
-**Deploy the Manager to the cluster with the image specified by `IMG`:**
+or
 
-```sh
-make deploy IMG=<some-registry>/uptime-operator:tag
+```shell
+docker build -t pdok/uptime-operator .
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+```text
+USAGE:
+   <uptime-controller-manager> [OPTIONS]
 
-**Create instances of your solution**
-You can apply the samples (examples) from the config/sample:
-
-```sh
-kubectl apply -k config/samples/
+OPTIONS:
+  -betterstack-api-token string
+    	The API token to authenticate with Better Stack. Only applies when 'uptime-provider' is 'betterstack'
+  -enable-deletes
+    	Allow the operator to delete checks from the uptime provider when ingress routes are removed.
+  -enable-http2
+    	If set, HTTP/2 will be enabled for the metrics and webhook servers.
+  -health-probe-bind-address string
+    	The address the probe endpoint binds to. (default ":8081")
+  -kubeconfig string
+    	Paths to a kubeconfig. Only required if out-of-cluster.
+  -leader-elect
+    	Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
+  -metrics-bind-address string
+    	The address the metric endpoint binds to. (default ":8080")
+  -metrics-secure
+    	If set the metrics endpoint is served securely.
+  -namespace value
+    	Namespace(s) to watch for changes. Specify this flag multiple times for each namespace to watch. When not provided all namespaces will be watched.
+  -pingdom-alert-integration-ids value
+    	One or more IDs of Pingdom integrations (like slack channels) to alert. Only applies when 'uptime-provider' is 'pingdom'
+  -pingdom-alert-user-ids value
+    	One or more IDs of Pingdom users to alert. Only applies when 'uptime-provider' is 'pingdom'
+  -pingdom-api-token string
+    	The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'
+  -slack-channel string
+    	The Slack Channel ID for posting updates when uptime checks are mutated.
+  -slack-webhook-url string
+    	The webhook URL required to post messages to the given Slack channel.
+  -uptime-provider string
+    	Name of the (SaaS) uptime monitoring provider to use. (default "mock")
+  -zap-devel
+    	Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error) (default true)
+  -zap-encoder value
+    	Zap log encoding (one of 'json' or 'console')
+  -zap-log-level value
+    	Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
+  -zap-stacktrace-level value
+    	Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
+  -zap-time-encoding value
+    	Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 'rfc3339nano'). Defaults to 'epoch'.
 ```
 
->**NOTE**: Ensure that the samples has default values to test it out.
+## Develop
 
-### To Uninstall
-**Delete the instances (CRs) from the cluster:**
+The project is written in Go and scaffolded with [kubebuilder](https://kubebuilder.io).
 
-```sh
-kubectl delete -k config/samples/
-```
+### kubebuilder
 
-**Delete the APIs(CRDs) from the cluster:**
+Read the manual when you want/need to make changes.
+E.g. run `make test` before committing.
 
-```sh
-make uninstall
-```
+### Linting
 
-**UnDeploy the controller from the cluster:**
+Install [golangci-lint](https://golangci-lint.run/usage/install/) and run `golangci-lint run`
+from the root.
+(Don't run `make lint`, it uses an old version of golangci-lint.)
 
-```sh
-make undeploy
-```
+### Testing against real APIs
 
-## Project Distribution
+To test against (for example) the actual/real Pingdom API run `internal/service/providers/pingdom_test.go`
+this test requires the `PINGDOM_API_TOKEN` env var to be set.
 
-Following the options to release and provide this solution to the users.
+## Misc
 
-### By providing a bundle with all YAML files
+### How to Contribute
 
-1. Build the installer for the image built and published in the registry:
+Make a pull request...
 
-```sh
-make build-installer IMG=<some-registry>/uptime-operator:tag
-```
+### Contact
 
-**NOTE:** The makefile target mentioned above generates an 'install.yaml'
-file in the dist directory. This file contains all the resources built
-with Kustomize, which are necessary to install this project without its
-dependencies.
-
-2. Using the installer
-
-Users can just run 'kubectl apply -f <URL for YAML BUNDLE>' to install
-the project, i.e.:
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/<org>/uptime-operator/<tag or branch>/dist/install.yaml
-```
-
-### By providing a Helm Chart
-
-1. Build the chart using the optional helm plugin
-
-```sh
-kubebuilder edit --plugins=helm/v1-alpha
-```
-
-2. See that a chart was generated under 'dist/chart', and users
-can obtain this solution from there.
-
-**NOTE:** If you change the project, you need to update the Helm Chart
-using the same command above to sync the latest changes. Furthermore,
-if you create webhooks, you need to use the above command with
-the '--force' flag and manually ensure that any custom configuration
-previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
-is manually re-applied afterwards.
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
-
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+Contacting the maintainers can be done through the issue tracker.
 
 ## License
 
-Copyright 2025.
+```text
+MIT License
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+Copyright (c) 2024 Publieke Dienstverlening op de Kaart
 
-    http://www.apache.org/licenses/LICENSE-2.0
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 
