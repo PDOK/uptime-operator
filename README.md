@@ -120,9 +120,7 @@ To update the scaffolding:
 
 ### Linting
 
-Install [golangci-lint](https://golangci-lint.run/usage/install/) and run `golangci-lint run`
-from the root.
-(Don't run `make lint`, it uses an old version of golangci-lint.)
+Run `make lint` from the root of the project.
 
 ### Testing against real APIs
 
