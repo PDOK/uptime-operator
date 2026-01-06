@@ -39,9 +39,6 @@ const namespace = "uptime-operator-system"
 
 var _ = Describe("controller", Ordered, func() {
 	BeforeAll(func() {
-		By("installing prometheus operator")
-		Expect(utils.InstallPrometheusOperator()).To(Succeed())
-
 		By("installing the cert-manager")
 		Expect(utils.InstallCertManager()).To(Succeed())
 
@@ -51,9 +48,6 @@ var _ = Describe("controller", Ordered, func() {
 	})
 
 	AfterAll(func() {
-		By("uninstalling the Prometheus manager bundle")
-		utils.UninstallPrometheusOperator()
-
 		By("uninstalling the cert-manager bundle")
 		utils.UninstallCertManager()
 
@@ -104,7 +98,7 @@ var _ = Describe("controller", Ordered, func() {
 
 				podOutput, err := utils.Run(cmd)
 				ExpectWithOffset(2, err).NotTo(HaveOccurred())
-				podNames := utils.GetNonEmptyLines(string(podOutput))
+				podNames := utils.GetNonEmptyLines(podOutput)
 				if len(podNames) != 1 {
 					return fmt.Errorf("expect 1 controller pods running, but got %d", len(podNames))
 				}
@@ -118,7 +112,7 @@ var _ = Describe("controller", Ordered, func() {
 				)
 				status, err := utils.Run(cmd)
 				ExpectWithOffset(2, err).NotTo(HaveOccurred())
-				if string(status) != "Running" {
+				if status != "Running" {
 					return fmt.Errorf("controller pod in %s status", status)
 				}
 				return nil

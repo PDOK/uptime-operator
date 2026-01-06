@@ -135,7 +135,8 @@ func main() {
 	uptimeProviderID := p.UptimeProviderID(uptimeProvider)
 
 	// Optional provider specific flag handling
-	if uptimeProviderID == p.ProviderPingdom {
+	switch uptimeProviderID { //nolint: exhaustive // no need to handle mock provider
+	case p.ProviderPingdom:
 		alertUserIDs, err := util.StringsToInts(pingdomAlertUserIDs)
 		if err != nil {
 			setupLog.Error(err, "Unable to parse 'pingdom-alert-user-ids' flag")
@@ -151,7 +152,7 @@ func main() {
 			UserIDs:        alertUserIDs,
 			IntegrationIDs: alertIntegrationIDs,
 		}
-	} else if uptimeProviderID == p.ProviderBetterStack {
+	case p.ProviderBetterStack:
 		uptimeProviderSettings = betterstack.Settings{
 			APIToken: betterstackAPIToken,
 		}

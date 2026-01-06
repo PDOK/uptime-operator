@@ -79,10 +79,11 @@ func (r *UptimeCheckService) Mutate(ctx context.Context, mutation m.Mutation, in
 		r.logAnnotationErr(ctx, err)
 		return
 	}
-	if mutation == m.CreateOrUpdate {
+	switch mutation {
+	case m.CreateOrUpdate:
 		err = r.provider.CreateOrUpdateCheck(ctx, *check)
 		r.logMutation(ctx, err, mutation, check)
-	} else if mutation == m.Delete {
+	case m.Delete:
 		if !r.enableDeletes {
 			r.logDeleteDisabled(ctx, check)
 			return
