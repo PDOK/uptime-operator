@@ -96,6 +96,10 @@ linters:
       - std-error-handling
     rules:
       - linters:
+          - revive
+        text: "var-naming: avoid meaningless package names"
+        path: internal/util/
+      - linters:
           - bodyclose
           - dogsled
           - dupl
