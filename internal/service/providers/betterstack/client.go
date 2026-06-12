@@ -32,7 +32,7 @@ func (h Client) execRequest(req *http.Request, expectedStatus int) (*http.Respon
 	if resp.StatusCode != expectedStatus {
 		defer resp.Body.Close()
 		result, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("got status %d, expected %d. Body: %b", resp.StatusCode, expectedStatus, result)
+		return nil, fmt.Errorf("got status %d, expected %d. Body: %s", resp.StatusCode, expectedStatus, result)
 	}
 	return resp, nil // caller should close resp.Body!
 }
