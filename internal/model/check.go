@@ -58,7 +58,7 @@ func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeC
 		ID:                id,
 		Name:              name,
 		URL:               url,
-		Tags:              stringToSlice(annotations[AnnotationTags]),
+		Tags:              parseTags(annotations[AnnotationTags]),
 		Interval:          interval,
 		RequestHeaders:    kvStringToMap(annotations[AnnotationRequestHeaders]),
 		StringContains:    annotations[AnnotationStringContains],
@@ -99,14 +99,24 @@ func kvStringToMap(s string) map[string]string {
 	return result
 }
 
-func stringToSlice(s string) []string {
+func parseTags(s string) []string {
 	if s == "" {
 		return nil
 	}
+
+	seen := make(map[string]struct{})
 	var result []string
 	splits := strings.Split(s, ",")
 	for _, part := range splits {
-		result = append(result, strings.TrimSpace(part))
+		value := strings.TrimSpace(part)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
 	}
 	return result
 }
