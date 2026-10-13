@@ -12,15 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
       - name: Make test
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
         env:
           PINGDOM_API_TOKEN: ${{ secrets.PINGDOM_API_TOKEN }}
           BETTERSTACK_API_TOKEN: ${{ secrets.BETTERSTACK_API_TOKEN }}
@@ -35,7 +35,7 @@ jobs:
             mv cover.out cover.out.tmp && grep -vP "uptime-operator/(api/v1alpha1|cmd|test/utils)/" cover.out.tmp > cover.out
 
       - name: Update coverage report
-        uses: ncruces/go-coverage-report@v0
+        uses: ncruces/go-coverage-report@dfc237255099f2d25066babde51253992175e365 #v0.3.2
         with:
           coverage-file: cover.out
           report: true
