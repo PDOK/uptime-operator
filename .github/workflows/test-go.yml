@@ -29,6 +29,7 @@ jobs:
           max_attempts: 2
           retry_on: error
           command: |
+            set -e
             make test
             echo "removing generated code from coverage results"
             mv cover.out cover.out.tmp && grep -vP "uptime-operator/(api/v1alpha1|cmd|test/utils)/" cover.out.tmp > cover.out
