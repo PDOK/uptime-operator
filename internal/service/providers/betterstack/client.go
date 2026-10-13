@@ -13,7 +13,6 @@ import (
 )
 
 const typeMonitor = "Monitor"
-const confirmationPeriodInSeconds = 61
 
 type Client struct {
 	httpClient *http.Client
@@ -364,8 +363,9 @@ func checkToMonitor(check model.UptimeCheck) MonitorCreateOrUpdateRequest {
 	request.URL = check.URL
 	request.PronounceableName = check.Name
 	request.Port = 443
-	request.CheckFrequency = toSupportedInterval(check.Interval)
-	request.ConfirmationPeriod = confirmationPeriodInSeconds
+	var supportedInterval = toSupportedInterval(check.Interval)
+	request.CheckFrequency = supportedInterval
+	request.ConfirmationPeriod = supportedInterval + 1
 	request.Email = false
 	request.Sms = false
 	request.Call = false
