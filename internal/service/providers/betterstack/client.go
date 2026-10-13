@@ -13,6 +13,7 @@ import (
 )
 
 const typeMonitor = "Monitor"
+const confirmationPeriodInSeconds = 61
 
 type Client struct {
 	httpClient *http.Client
@@ -215,16 +216,17 @@ type MonitorRequestHeader struct {
 }
 
 type MonitorCreateOrUpdateRequest struct {
-	MonitorType       string                 `json:"monitor_type"`
-	URL               string                 `json:"url"`
-	PronounceableName string                 `json:"pronounceable_name"`
-	Port              int                    `json:"port"`
-	Email             bool                   `json:"email"`
-	Sms               bool                   `json:"sms"`
-	Call              bool                   `json:"call"`
-	RequiredKeyword   string                 `json:"required_keyword"`
-	CheckFrequency    int                    `json:"check_frequency"`
-	RequestHeaders    []MonitorRequestHeader `json:"request_headers"`
+	MonitorType        string                 `json:"monitor_type"`
+	URL                string                 `json:"url"`
+	PronounceableName  string                 `json:"pronounceable_name"`
+	Port               int                    `json:"port"`
+	Email              bool                   `json:"email"`
+	Sms                bool                   `json:"sms"`
+	Call               bool                   `json:"call"`
+	RequiredKeyword    string                 `json:"required_keyword"`
+	CheckFrequency     int                    `json:"check_frequency"`
+	ConfirmationPeriod int                    `json:"confirmation_period"`
+	RequestHeaders     []MonitorRequestHeader `json:"request_headers"`
 }
 
 type MonitorCreateResponse struct {
@@ -363,6 +365,7 @@ func checkToMonitor(check model.UptimeCheck) MonitorCreateOrUpdateRequest {
 	request.PronounceableName = check.Name
 	request.Port = 443
 	request.CheckFrequency = toSupportedInterval(check.Interval)
+	request.ConfirmationPeriod = confirmationPeriodInSeconds
 	request.Email = false
 	request.Sms = false
 	request.Call = false
