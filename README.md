@@ -45,6 +45,21 @@ To exclude a route from uptime monitoring you can explicitly add a `uptime.pdok.
 The difference between a route without any annotation or a route with an `/ignore` annotation is that the 
 latter won't cause any error logging.
 
+### Better Stack confirmation period
+
+By default, Better Stack monitors use a confirmation period of one second longer than
+the nearest supported check interval. This delays incident creation after a failure.
+To disable this delay for a route, add:
+
+```yaml
+uptime.pdok.nl/betterstack-confirmation-period-enabled: "false"
+```
+
+Disabling explicitly sets `confirmation_period` to `0` when creating or updating
+the monitor. Removing the annotation or setting it to `"true"` restores the default
+behavior. Invalid boolean values cause a validation error. This setting does not
+affect other providers.
+
 ## Run/usage
 
 ```shell
@@ -126,6 +141,12 @@ Run `make lint` from the root of the project.
 
 To test against (for example) the actual/real Pingdom API run `internal/service/providers/pingdom_test.go`
 this test requires the `PINGDOM_API_TOKEN` env var to be set.
+
+To verify Better Stack integration, run the following command with a valid Better Stack API token:
+
+```shell
+BETTERSTACK_API_TOKEN=<token> go test ./internal/service/providers/betterstack -run '^TestAgainstREALBetterStackAPI' -count=1 -v
+```
 
 ## Misc
 
