@@ -312,12 +312,13 @@ type MonitorGetResponse struct {
 		ID         string `json:"id"`
 		Type       string `json:"type"`
 		Attributes *struct {
-			URL               string                 `json:"url"`
-			PronounceableName string                 `json:"pronounceable_name"`
-			MonitorType       string                 `json:"monitor_type"`
-			RequiredKeyword   string                 `json:"required_keyword"`
-			CheckFrequency    int                    `json:"check_frequency"`
-			RequestHeaders    []MonitorRequestHeader `json:"request_headers"`
+			URL                string                 `json:"url"`
+			PronounceableName  string                 `json:"pronounceable_name"`
+			MonitorType        string                 `json:"monitor_type"`
+			RequiredKeyword    string                 `json:"required_keyword"`
+			CheckFrequency     int                    `json:"check_frequency"`
+			ConfirmationPeriod int                    `json:"confirmation_period"`
+			RequestHeaders     []MonitorRequestHeader `json:"request_headers"`
 		} `json:"attributes"`
 	} `json:"data"`
 }
@@ -365,7 +366,11 @@ func checkToMonitor(check model.UptimeCheck) MonitorCreateOrUpdateRequest {
 	request.Port = 443
 	var supportedInterval = toSupportedInterval(check.Interval)
 	request.CheckFrequency = supportedInterval
-	request.ConfirmationPeriod = supportedInterval + 1
+	if check.BetterStackConfirmationPeriodEnabled {
+		request.ConfirmationPeriod = supportedInterval + 1
+	} else {
+		request.ConfirmationPeriod = 0
+	}
 	request.Email = false
 	request.Sms = false
 	request.Call = false

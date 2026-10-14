@@ -11,15 +11,73 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type integrationTest struct {
+	name                    string
+	annotations             map[string]string
+	wantErr                 bool
+	wantDelete              bool
+	wantConfirmationPeriod  int
+	checkConfirmationPeriod bool
+}
+
+// Test against production Better Stack API. Please supply BETTERSTACK_API_TOKEN.
+func TestAgainstREALBetterStackAPI_ConfirmationPeriod(t *testing.T) {
+	tests := []integrationTest{
+		{
+			name: "Create check with confirmation period disabled",
+			annotations: map[string]string{
+				model.AnnotationID:       "5c0e1a7e-3f4b-4d2a-9b8e-c0f14710a0a0",
+				model.AnnotationName:     "UptimeOperatorBetterStackConfirmationPeriodTest",
+				model.AnnotationURL:      "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
+				model.AnnotationInterval: "1",
+				model.AnnotationBetterStackConfirmationPeriodEnabled: "false",
+			},
+			wantConfirmationPeriod:  0,
+			checkConfirmationPeriod: true,
+		},
+		{
+			name: "Update check with confirmation period enabled",
+			annotations: map[string]string{
+				model.AnnotationID:       "5c0e1a7e-3f4b-4d2a-9b8e-c0f14710a0a0",
+				model.AnnotationName:     "UptimeOperatorBetterStackConfirmationPeriodTest",
+				model.AnnotationURL:      "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
+				model.AnnotationInterval: "1",
+				model.AnnotationBetterStackConfirmationPeriodEnabled: "true",
+			},
+			wantConfirmationPeriod:  61,
+			checkConfirmationPeriod: true,
+		},
+		{
+			name: "Update check with confirmation period disabled",
+			annotations: map[string]string{
+				model.AnnotationID:       "5c0e1a7e-3f4b-4d2a-9b8e-c0f14710a0a0",
+				model.AnnotationName:     "UptimeOperatorBetterStackConfirmationPeriodTest",
+				model.AnnotationURL:      "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
+				model.AnnotationInterval: "1",
+				model.AnnotationBetterStackConfirmationPeriodEnabled: "false",
+			},
+			wantConfirmationPeriod:  0,
+			checkConfirmationPeriod: true,
+		},
+		{
+			name: "Delete confirmation period test check",
+			annotations: map[string]string{
+				model.AnnotationID:   "5c0e1a7e-3f4b-4d2a-9b8e-c0f14710a0a0",
+				model.AnnotationName: "UptimeOperatorBetterStackConfirmationPeriodTest",
+				model.AnnotationURL:  "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
+			},
+			wantDelete: true,
+		},
+	}
+	for _, tt := range tests {
+		runIntegrationTest(t, tt)
+	}
+}
+
 // Test against production better stack API. Please supply BETTERSTACK_API_TOKEN.
 // This test creates one check, updates it and then deletes the check.
 func TestAgainstREALBetterStackAPI(t *testing.T) {
-	tests := []struct {
-		name        string
-		annotations map[string]string
-		wantErr     bool
-		wantDelete  bool
-	}{
+	tests := []integrationTest{
 		{
 			name: "Create check",
 			annotations: map[string]string{
@@ -78,12 +136,7 @@ func TestAgainstREALBetterStackAPI(t *testing.T) {
 // Test against production better stack API. Please supply BETTERSTACK_API_TOKEN.
 // This test creates one check, updates it and then deletes the check.
 func TestAgainstREALBetterStackAPI_WithPagination(t *testing.T) {
-	tests := []struct {
-		name        string
-		annotations map[string]string
-		wantErr     bool
-		wantDelete  bool
-	}{
+	tests := []integrationTest{
 		{
 			name: "Create check 1",
 			annotations: map[string]string{
@@ -132,12 +185,7 @@ func TestAgainstREALBetterStackAPI_WithPagination(t *testing.T) {
 	}
 }
 
-func runIntegrationTest(t *testing.T, tt struct {
-	name        string
-	annotations map[string]string
-	wantErr     bool
-	wantDelete  bool
-}) {
+func runIntegrationTest(t *testing.T, tt integrationTest) {
 	if os.Getenv("BETTERSTACK_API_TOKEN") == "" {
 		t.Skip("skipping test. BETTERSTACK_API_TOKEN is required to run this " +
 			"integration test against the REAL Better Stack API.")
@@ -165,6 +213,28 @@ func runIntegrationTest(t *testing.T, tt struct {
 			}
 			// give Better Stack some time to process the api call, just in case
 			time.Sleep(5 * time.Second)
+			if tt.checkConfirmationPeriod {
+				assertConfirmationPeriod(t, m, *check, tt.wantConfirmationPeriod)
+			}
 		}
 	})
+}
+
+func assertConfirmationPeriod(t *testing.T, m *BetterStack, check model.UptimeCheck, expected int) {
+	t.Helper()
+	monitorID, err := m.findCheck(check)
+	if !assert.NoError(t, err) || !assert.NotEqual(t, providers.CheckNotFound, monitorID) {
+		return
+	}
+	monitor, err := m.client.getMonitor(monitorID)
+	if !assert.NoError(t, err) || !assert.NotNil(t, monitor) {
+		return
+	}
+	if !assert.NotNil(t, monitor.Data) {
+		return
+	}
+	if !assert.NotNil(t, monitor.Data.Attributes) {
+		return
+	}
+	assert.Equal(t, expected, monitor.Data.Attributes.ConfirmationPeriod)
 }

@@ -2,8 +2,50 @@ package model
 
 import (
 	"slices"
+	"strings"
 	"testing"
 )
+
+func TestNewUptimeCheckBetterStackConfirmationPeriod(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		expected    bool
+		wantErr     bool
+	}{
+		{name: "DefaultEnabled", expected: true},
+		{name: "ExplicitlyEnabled", annotations: map[string]string{AnnotationBetterStackConfirmationPeriodEnabled: "true"}, expected: true},
+		{name: "Disabled", annotations: map[string]string{AnnotationBetterStackConfirmationPeriodEnabled: "false"}, expected: false},
+		{name: "InvalidBoolean", annotations: map[string]string{AnnotationBetterStackConfirmationPeriodEnabled: "invalid"}, wantErr: true},
+		{name: "EmptyBoolean", annotations: map[string]string{AnnotationBetterStackConfirmationPeriodEnabled: ""}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			annotations := map[string]string{
+				AnnotationID:   "1234567890",
+				AnnotationName: "Test Check",
+				AnnotationURL:  "https://pdok.example",
+			}
+			for key, value := range tt.annotations {
+				annotations[key] = value
+			}
+			check, err := NewUptimeCheck("test-ingress", annotations)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("NewUptimeCheck() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				if !strings.Contains(err.Error(), AnnotationBetterStackConfirmationPeriodEnabled) {
+					t.Errorf("NewUptimeCheck() error = %v, expected annotation name", err)
+				}
+				return
+			}
+			actual := check.BetterStackConfirmationPeriodEnabled
+			if actual != tt.expected {
+				t.Errorf("NewUptimeCheck().BetterStackConfirmationPeriodEnabled => expected %v, got %v", tt.expected, actual)
+			}
+		})
+	}
+}
 
 func TestNewUptimeCheck(t *testing.T) {
 	tests := []struct {
