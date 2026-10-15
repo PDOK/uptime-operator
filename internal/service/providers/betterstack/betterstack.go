@@ -15,6 +15,8 @@ import (
 
 const betterStackBaseURL = "https://uptime.betterstack.com"
 
+const annotationConfirmationPeriodEnabled = model.AnnotationBase + "/betterstack-confirmation-period-enabled"
+
 type Settings struct {
 	APIToken string
 	PageSize int
@@ -42,13 +44,17 @@ func New(settings Settings) *BetterStack {
 
 // CreateOrUpdateCheck create the given check with Better Stack, or update an existing check. Needs to be idempotent!
 func (b *BetterStack) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) (err error) {
+	enabled, err := confirmationPeriodEnabled(check.Annotations)
+	if err != nil {
+		return err
+	}
 	existingCheckID, err := b.findCheck(check)
 	if err != nil {
 		return fmt.Errorf("failed to find check %s, error: %w", check.ID, err)
 	}
 	if existingCheckID == p.CheckNotFound { //nolint:nestif // clean enough
 		log.FromContext(ctx).Info("creating check", "check", check)
-		monitorID, err := b.client.createMonitor(check)
+		monitorID, err := b.client.createMonitor(check, enabled)
 		if err != nil {
 			return fmt.Errorf("failed to create monitor for check %s, error: %w", check.ID, err)
 		}
@@ -61,7 +67,7 @@ func (b *BetterStack) CreateOrUpdateCheck(ctx context.Context, check model.Uptim
 		if err != nil {
 			return fmt.Errorf("failed to get monitor for check %s, error: %w", check.ID, err)
 		}
-		if err = b.client.updateMonitor(check, existingMonitor); err != nil {
+		if err = b.client.updateMonitor(check, existingMonitor, enabled); err != nil {
 			return fmt.Errorf("failed to update monitor for check %s (betterstack ID: %d), "+
 				"error: %w", check.ID, existingCheckID, err)
 		}
@@ -71,6 +77,18 @@ func (b *BetterStack) CreateOrUpdateCheck(ctx context.Context, check model.Uptim
 		}
 	}
 	return err
+}
+
+func confirmationPeriodEnabled(annotations map[string]string) (bool, error) {
+	value, ok := annotations[annotationConfirmationPeriodEnabled]
+	if !ok {
+		return true, nil
+	}
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("%s annotation should contain boolean value: %w", annotationConfirmationPeriodEnabled, err)
+	}
+	return enabled, nil
 }
 
 // DeleteCheck deletes the given check from Better Stack

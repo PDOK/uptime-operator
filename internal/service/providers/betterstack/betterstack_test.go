@@ -2,7 +2,9 @@ package betterstack
 
 import (
 	"context"
+	"maps"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +12,49 @@ import (
 	"github.com/PDOK/uptime-operator/internal/service/providers"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestConfirmationPeriodEnabled(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		expected    bool
+		wantErr     bool
+	}{
+		{name: "DefaultEnabled", expected: true},
+		{name: "ExplicitlyEnabled", annotations: map[string]string{annotationConfirmationPeriodEnabled: "true"}, expected: true},
+		{name: "Disabled", annotations: map[string]string{annotationConfirmationPeriodEnabled: "false"}, expected: false},
+		{name: "InvalidBoolean", annotations: map[string]string{annotationConfirmationPeriodEnabled: "invalid"}, wantErr: true},
+		{name: "EmptyBoolean", annotations: map[string]string{annotationConfirmationPeriodEnabled: ""}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := confirmationPeriodEnabled(tt.annotations)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("confirmationPeriodEnabled() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				if !strings.Contains(err.Error(), annotationConfirmationPeriodEnabled) {
+					t.Errorf("confirmationPeriodEnabled() error = %v, expected annotation name", err)
+				}
+				return
+			}
+			if actual != tt.expected {
+				t.Errorf("confirmationPeriodEnabled() => expected %v, got %v", tt.expected, actual)
+			}
+		})
+	}
+}
+
+func TestCreateOrUpdateCheckInvalidConfirmationPeriod(t *testing.T) {
+	m := &BetterStack{}
+	check := model.UptimeCheck{
+		Annotations: map[string]string{annotationConfirmationPeriodEnabled: "invalid"},
+	}
+	err := m.CreateOrUpdateCheck(context.Background(), check)
+	if err == nil || !strings.Contains(err.Error(), annotationConfirmationPeriodEnabled) {
+		t.Errorf("CreateOrUpdateCheck() error = %v, expected annotation validation error before API calls", err)
+	}
+}
 
 type integrationTest struct {
 	name                    string
@@ -22,51 +67,40 @@ type integrationTest struct {
 
 // Test against production Better Stack API. Please supply BETTERSTACK_API_TOKEN.
 func TestAgainstREALBetterStackAPI_ConfirmationPeriod(t *testing.T) {
+	baseAnnotations := map[string]string{
+		model.AnnotationID:       "5c0e1a7e-3f4b-4d2a-9b8e-c0f14710a0a0",
+		model.AnnotationName:     "UptimeOperatorBetterStackConfirmationPeriodTest",
+		model.AnnotationURL:      "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
+		model.AnnotationInterval: "1",
+	}
+	annotationsForBetterStackConfirmationEnabled := func(enabled string) map[string]string {
+		annotations := maps.Clone(baseAnnotations)
+		annotations[annotationConfirmationPeriodEnabled] = enabled
+		return annotations
+	}
 	tests := []integrationTest{
 		{
-			name: "Create check with confirmation period disabled",
-			annotations: map[string]string{
-				model.AnnotationID:       "5c0e1a7e-3f4b-4d2a-9b8e-c0f14710a0a0",
-				model.AnnotationName:     "UptimeOperatorBetterStackConfirmationPeriodTest",
-				model.AnnotationURL:      "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
-				model.AnnotationInterval: "1",
-				model.AnnotationBetterStackConfirmationPeriodEnabled: "false",
-			},
+			name:                    "Create check with confirmation period disabled",
+			annotations:             annotationsForBetterStackConfirmationEnabled("false"),
 			wantConfirmationPeriod:  0,
 			checkConfirmationPeriod: true,
 		},
 		{
-			name: "Update check with confirmation period enabled",
-			annotations: map[string]string{
-				model.AnnotationID:       "5c0e1a7e-3f4b-4d2a-9b8e-c0f14710a0a0",
-				model.AnnotationName:     "UptimeOperatorBetterStackConfirmationPeriodTest",
-				model.AnnotationURL:      "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
-				model.AnnotationInterval: "1",
-				model.AnnotationBetterStackConfirmationPeriodEnabled: "true",
-			},
+			name:                    "Update check with confirmation period enabled",
+			annotations:             annotationsForBetterStackConfirmationEnabled("true"),
 			wantConfirmationPeriod:  61,
 			checkConfirmationPeriod: true,
 		},
 		{
-			name: "Update check with confirmation period disabled",
-			annotations: map[string]string{
-				model.AnnotationID:       "5c0e1a7e-3f4b-4d2a-9b8e-c0f14710a0a0",
-				model.AnnotationName:     "UptimeOperatorBetterStackConfirmationPeriodTest",
-				model.AnnotationURL:      "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
-				model.AnnotationInterval: "1",
-				model.AnnotationBetterStackConfirmationPeriodEnabled: "false",
-			},
+			name:                    "Update check with confirmation period disabled",
+			annotations:             annotationsForBetterStackConfirmationEnabled("false"),
 			wantConfirmationPeriod:  0,
 			checkConfirmationPeriod: true,
 		},
 		{
-			name: "Delete confirmation period test check",
-			annotations: map[string]string{
-				model.AnnotationID:   "5c0e1a7e-3f4b-4d2a-9b8e-c0f14710a0a0",
-				model.AnnotationName: "UptimeOperatorBetterStackConfirmationPeriodTest",
-				model.AnnotationURL:  "https://service.pdok.nl/cbs/landuse/wfs/v1_0?request=GetCapabilities&service=WFS",
-			},
-			wantDelete: true,
+			name:        "Delete confirmation period test check",
+			annotations: maps.Clone(baseAnnotations),
+			wantDelete:  true,
 		},
 	}
 	for _, tt := range tests {

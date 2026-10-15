@@ -236,8 +236,8 @@ type MonitorCreateResponse struct {
 }
 
 // createMonitor https://betterstack.com/docs/uptime/api/create-a-new-monitor/
-func (h Client) createMonitor(check model.UptimeCheck) (int64, error) {
-	createRequest := checkToMonitor(check)
+func (h Client) createMonitor(check model.UptimeCheck, confirmationPeriodEnabled bool) (int64, error) {
+	createRequest := checkToMonitor(check, confirmationPeriodEnabled)
 
 	body := &bytes.Buffer{}
 	err := json.NewEncoder(body).Encode(createRequest)
@@ -267,8 +267,8 @@ func (h Client) createMonitor(check model.UptimeCheck) (int64, error) {
 }
 
 // updateMonitor https://betterstack.com/docs/uptime/api/update-an-existing-monitor/
-func (h Client) updateMonitor(check model.UptimeCheck, existingMonitor *MonitorGetResponse) error {
-	updateRequest := checkToMonitor(check)
+func (h Client) updateMonitor(check model.UptimeCheck, existingMonitor *MonitorGetResponse, confirmationPeriodEnabled bool) error {
+	updateRequest := checkToMonitor(check, confirmationPeriodEnabled)
 
 	if existingMonitor == nil || existingMonitor.Data == nil || existingMonitor.Data.Attributes == nil {
 		return fmt.Errorf("invalid monitor response, expected values are nil: %v", existingMonitor)
@@ -343,7 +343,7 @@ func (h Client) getMonitor(monitorID int64) (*MonitorGetResponse, error) {
 	return existingMonitor, nil
 }
 
-func checkToMonitor(check model.UptimeCheck) MonitorCreateOrUpdateRequest {
+func checkToMonitor(check model.UptimeCheck, confirmationPeriodEnabled bool) MonitorCreateOrUpdateRequest {
 	var request MonitorCreateOrUpdateRequest
 	switch {
 	case check.StringContains != "":
@@ -366,7 +366,7 @@ func checkToMonitor(check model.UptimeCheck) MonitorCreateOrUpdateRequest {
 	request.Port = 443
 	var supportedInterval = toSupportedInterval(check.Interval)
 	request.CheckFrequency = supportedInterval
-	if check.BetterStackConfirmationPeriodEnabled {
+	if confirmationPeriodEnabled {
 		request.ConfirmationPeriod = supportedInterval + 1
 	} else {
 		request.ConfirmationPeriod = 0
