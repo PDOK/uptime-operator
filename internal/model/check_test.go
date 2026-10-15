@@ -1,9 +1,30 @@
 package model
 
 import (
+	"maps"
 	"slices"
 	"testing"
 )
+
+func TestNewUptimeCheckAnnotations(t *testing.T) {
+	annotations := map[string]string{
+		AnnotationID:                  "1234567890",
+		AnnotationName:                "Test Check",
+		AnnotationURL:                 "https://pdok.example",
+		"example.com/provider-option": "unparsed value",
+	}
+	check, err := NewUptimeCheck("test-ingress", annotations)
+	if err != nil {
+		t.Fatalf("NewUptimeCheck() error = %v", err)
+	}
+	if !maps.Equal(check.Annotations, annotations) {
+		t.Errorf("NewUptimeCheck().Annotations = %v, want %v", check.Annotations, annotations)
+	}
+	annotations["example.com/provider-option"] = "changed"
+	if actual := check.Annotations["example.com/provider-option"]; actual != "unparsed value" {
+		t.Errorf("NewUptimeCheck().Annotations should be a copy, got %q", actual)
+	}
+}
 
 func TestNewUptimeCheck(t *testing.T) {
 	tests := []struct {

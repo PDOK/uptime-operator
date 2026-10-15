@@ -27,6 +27,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	m "github.com/PDOK/uptime-operator/internal/model"
 	"github.com/PDOK/uptime-operator/internal/service"
@@ -96,6 +97,9 @@ var ingressRouteWithUptimeCheck = &traefikio.IngressRoute{
 var _ = Describe("IngressRoute Controller", func() {
 	Context("When reconciling IngressRoutes", func() {
 		ctx := context.Background()
+		annotations := maps.Clone(ingressRouteWithUptimeCheck.Annotations)
+		updatedAnnotations := maps.Clone(annotations)
+		updatedAnnotations[m.AnnotationStringContains] = "OK"
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      testIngress,
@@ -127,11 +131,12 @@ var _ = Describe("IngressRoute Controller", func() {
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(testProvider.checks).To(ContainElement(m.UptimeCheck{
-				ID:       "y45735y375",
-				URL:      "https://test.example",
-				Name:     "Test uptime check",
-				Tags:     []string{"managed-by-uptime-operator"},
-				Interval: 1,
+				ID:          "y45735y375",
+				URL:         "https://test.example",
+				Name:        "Test uptime check",
+				Tags:        []string{"managed-by-uptime-operator"},
+				Interval:    1,
+				Annotations: annotations,
 			}))
 
 			By("Fetching and updating IngressRoute (adding extra uptime annotation)")
@@ -153,6 +158,7 @@ var _ = Describe("IngressRoute Controller", func() {
 				Tags:           []string{"managed-by-uptime-operator"},
 				StringContains: "OK",
 				Interval:       1,
+				Annotations:    updatedAnnotations,
 			}))
 
 			By("Reconciling the IngressRoute again to make sure it doesn't cause any side effects")
@@ -179,6 +185,7 @@ var _ = Describe("IngressRoute Controller", func() {
 				Tags:           []string{"managed-by-uptime-operator"},
 				StringContains: "OK",
 				Interval:       1,
+				Annotations:    updatedAnnotations,
 			}))
 
 			By("Delete IngressRoute")

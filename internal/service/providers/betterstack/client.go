@@ -215,16 +215,17 @@ type MonitorRequestHeader struct {
 }
 
 type MonitorCreateOrUpdateRequest struct {
-	MonitorType       string                 `json:"monitor_type"`
-	URL               string                 `json:"url"`
-	PronounceableName string                 `json:"pronounceable_name"`
-	Port              int                    `json:"port"`
-	Email             bool                   `json:"email"`
-	Sms               bool                   `json:"sms"`
-	Call              bool                   `json:"call"`
-	RequiredKeyword   string                 `json:"required_keyword"`
-	CheckFrequency    int                    `json:"check_frequency"`
-	RequestHeaders    []MonitorRequestHeader `json:"request_headers"`
+	MonitorType        string                 `json:"monitor_type"`
+	URL                string                 `json:"url"`
+	PronounceableName  string                 `json:"pronounceable_name"`
+	Port               int                    `json:"port"`
+	Email              bool                   `json:"email"`
+	Sms                bool                   `json:"sms"`
+	Call               bool                   `json:"call"`
+	RequiredKeyword    string                 `json:"required_keyword"`
+	CheckFrequency     int                    `json:"check_frequency"`
+	ConfirmationPeriod int                    `json:"confirmation_period"`
+	RequestHeaders     []MonitorRequestHeader `json:"request_headers"`
 }
 
 type MonitorCreateResponse struct {
@@ -235,8 +236,8 @@ type MonitorCreateResponse struct {
 }
 
 // createMonitor https://betterstack.com/docs/uptime/api/create-a-new-monitor/
-func (h Client) createMonitor(check model.UptimeCheck) (int64, error) {
-	createRequest := checkToMonitor(check)
+func (h Client) createMonitor(check model.UptimeCheck, confirmationPeriodEnabled bool) (int64, error) {
+	createRequest := checkToMonitor(check, confirmationPeriodEnabled)
 
 	body := &bytes.Buffer{}
 	err := json.NewEncoder(body).Encode(createRequest)
@@ -266,8 +267,8 @@ func (h Client) createMonitor(check model.UptimeCheck) (int64, error) {
 }
 
 // updateMonitor https://betterstack.com/docs/uptime/api/update-an-existing-monitor/
-func (h Client) updateMonitor(check model.UptimeCheck, existingMonitor *MonitorGetResponse) error {
-	updateRequest := checkToMonitor(check)
+func (h Client) updateMonitor(check model.UptimeCheck, existingMonitor *MonitorGetResponse, confirmationPeriodEnabled bool) error {
+	updateRequest := checkToMonitor(check, confirmationPeriodEnabled)
 
 	if existingMonitor == nil || existingMonitor.Data == nil || existingMonitor.Data.Attributes == nil {
 		return fmt.Errorf("invalid monitor response, expected values are nil: %v", existingMonitor)
@@ -311,12 +312,13 @@ type MonitorGetResponse struct {
 		ID         string `json:"id"`
 		Type       string `json:"type"`
 		Attributes *struct {
-			URL               string                 `json:"url"`
-			PronounceableName string                 `json:"pronounceable_name"`
-			MonitorType       string                 `json:"monitor_type"`
-			RequiredKeyword   string                 `json:"required_keyword"`
-			CheckFrequency    int                    `json:"check_frequency"`
-			RequestHeaders    []MonitorRequestHeader `json:"request_headers"`
+			URL                string                 `json:"url"`
+			PronounceableName  string                 `json:"pronounceable_name"`
+			MonitorType        string                 `json:"monitor_type"`
+			RequiredKeyword    string                 `json:"required_keyword"`
+			CheckFrequency     int                    `json:"check_frequency"`
+			ConfirmationPeriod int                    `json:"confirmation_period"`
+			RequestHeaders     []MonitorRequestHeader `json:"request_headers"`
 		} `json:"attributes"`
 	} `json:"data"`
 }
@@ -341,7 +343,7 @@ func (h Client) getMonitor(monitorID int64) (*MonitorGetResponse, error) {
 	return existingMonitor, nil
 }
 
-func checkToMonitor(check model.UptimeCheck) MonitorCreateOrUpdateRequest {
+func checkToMonitor(check model.UptimeCheck, confirmationPeriodEnabled bool) MonitorCreateOrUpdateRequest {
 	var request MonitorCreateOrUpdateRequest
 	switch {
 	case check.StringContains != "":
@@ -362,7 +364,13 @@ func checkToMonitor(check model.UptimeCheck) MonitorCreateOrUpdateRequest {
 	request.URL = check.URL
 	request.PronounceableName = check.Name
 	request.Port = 443
-	request.CheckFrequency = toSupportedInterval(check.Interval)
+	var supportedInterval = toSupportedInterval(check.Interval)
+	request.CheckFrequency = supportedInterval
+	if confirmationPeriodEnabled {
+		request.ConfirmationPeriod = supportedInterval + 1
+	} else {
+		request.ConfirmationPeriod = 0
+	}
 	request.Email = false
 	request.Sms = false
 	request.Call = false

@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -35,6 +36,7 @@ type UptimeCheck struct {
 	RequestHeaders    map[string]string `json:"request_headers"`
 	StringContains    string            `json:"string_contains"`
 	StringNotContains string            `json:"string_not_contains"`
+	Annotations       map[string]string `json:"-"`
 }
 
 func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeCheck, error) {
@@ -63,6 +65,7 @@ func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeC
 		RequestHeaders:    kvStringToMap(annotations[AnnotationRequestHeaders]),
 		StringContains:    annotations[AnnotationStringContains],
 		StringNotContains: annotations[AnnotationStringNotContains],
+		Annotations:       maps.Clone(annotations),
 	}
 	if !slices.Contains(check.Tags, TagManagedBy) {
 		check.Tags = append(check.Tags, TagManagedBy)
