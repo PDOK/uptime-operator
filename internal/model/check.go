@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -13,30 +14,29 @@ const (
 	// TagManagedBy Indicate to humans that the given check is managed by the operator.
 	TagManagedBy = "managed-by-" + OperatorName
 
-	AnnotationBase                                 = "uptime.pdok.nl"
-	AnnotationID                                   = AnnotationBase + "/id"
-	AnnotationName                                 = AnnotationBase + "/name"
-	AnnotationURL                                  = AnnotationBase + "/url"
-	AnnotationTags                                 = AnnotationBase + "/tags"
-	AnnotationInterval                             = AnnotationBase + "/interval-in-minutes"
-	AnnotationRequestHeaders                       = AnnotationBase + "/request-headers"
-	AnnotationStringContains                       = AnnotationBase + "/response-check-for-string-contains"
-	AnnotationStringNotContains                    = AnnotationBase + "/response-check-for-string-not-contains"
-	AnnotationFinalizer                            = AnnotationBase + "/finalizer"
-	AnnotationIgnore                               = AnnotationBase + "/ignore"
-	AnnotationBetterStackConfirmationPeriodEnabled = AnnotationBase + "/betterstack-confirmation-period-enabled"
+	AnnotationBase              = "uptime.pdok.nl"
+	AnnotationID                = AnnotationBase + "/id"
+	AnnotationName              = AnnotationBase + "/name"
+	AnnotationURL               = AnnotationBase + "/url"
+	AnnotationTags              = AnnotationBase + "/tags"
+	AnnotationInterval          = AnnotationBase + "/interval-in-minutes"
+	AnnotationRequestHeaders    = AnnotationBase + "/request-headers"
+	AnnotationStringContains    = AnnotationBase + "/response-check-for-string-contains"
+	AnnotationStringNotContains = AnnotationBase + "/response-check-for-string-not-contains"
+	AnnotationFinalizer         = AnnotationBase + "/finalizer"
+	AnnotationIgnore            = AnnotationBase + "/ignore"
 )
 
 type UptimeCheck struct {
-	ID                                   string            `json:"id"`
-	Name                                 string            `json:"name"`
-	URL                                  string            `json:"url"`
-	Tags                                 []string          `json:"tags"`
-	Interval                             int               `json:"resolution"`
-	RequestHeaders                       map[string]string `json:"request_headers"`
-	StringContains                       string            `json:"string_contains"`
-	StringNotContains                    string            `json:"string_not_contains"`
-	BetterStackConfirmationPeriodEnabled bool              `json:"betterstack_confirmation_period_enabled"`
+	ID                string            `json:"id"`
+	Name              string            `json:"name"`
+	URL               string            `json:"url"`
+	Tags              []string          `json:"tags"`
+	Interval          int               `json:"resolution"`
+	RequestHeaders    map[string]string `json:"request_headers"`
+	StringContains    string            `json:"string_contains"`
+	StringNotContains string            `json:"string_not_contains"`
+	Annotations       map[string]string `json:"-"`
 }
 
 func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeCheck, error) {
@@ -56,24 +56,16 @@ func NewUptimeCheck(ingressName string, annotations map[string]string) (*UptimeC
 	if err != nil {
 		return nil, err
 	}
-	confirmationPeriodEnabled := true
-	if value, ok := annotations[AnnotationBetterStackConfirmationPeriodEnabled]; ok {
-		enabled, err := strconv.ParseBool(value)
-		if err != nil {
-			return nil, fmt.Errorf("%s annotation should contain boolean value: %w", AnnotationBetterStackConfirmationPeriodEnabled, err)
-		}
-		confirmationPeriodEnabled = enabled
-	}
 	check := &UptimeCheck{
-		ID:                                   id,
-		Name:                                 name,
-		URL:                                  url,
-		Tags:                                 parseTags(annotations[AnnotationTags]),
-		Interval:                             interval,
-		RequestHeaders:                       kvStringToMap(annotations[AnnotationRequestHeaders]),
-		StringContains:                       annotations[AnnotationStringContains],
-		StringNotContains:                    annotations[AnnotationStringNotContains],
-		BetterStackConfirmationPeriodEnabled: confirmationPeriodEnabled,
+		ID:                id,
+		Name:              name,
+		URL:               url,
+		Tags:              parseTags(annotations[AnnotationTags]),
+		Interval:          interval,
+		RequestHeaders:    kvStringToMap(annotations[AnnotationRequestHeaders]),
+		StringContains:    annotations[AnnotationStringContains],
+		StringNotContains: annotations[AnnotationStringNotContains],
+		Annotations:       maps.Clone(annotations),
 	}
 	if !slices.Contains(check.Tags, TagManagedBy) {
 		check.Tags = append(check.Tags, TagManagedBy)

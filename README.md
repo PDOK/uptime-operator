@@ -57,8 +57,9 @@ uptime.pdok.nl/betterstack-confirmation-period-enabled: "false"
 
 Disabling explicitly sets `confirmation_period` to `0` when creating or updating
 the monitor. Removing the annotation or setting it to `"true"` restores the default
-behavior. Invalid boolean values cause a validation error. This setting does not
-affect other providers.
+behavior. Better Stack validates this annotation before creating or updating a
+monitor; invalid boolean values return an error. Deletion and other providers
+ignore this setting.
 
 ## Run/usage
 
