@@ -367,7 +367,7 @@ func checkToMonitor(check model.UptimeCheck, confirmationPeriodEnabled bool) Mon
 	var supportedInterval = toSupportedInterval(check.Interval)
 	request.CheckFrequency = supportedInterval
 	if confirmationPeriodEnabled {
-		request.ConfirmationPeriod = supportedInterval + 1
+		request.ConfirmationPeriod = supportedInterval + 30
 	} else {
 		request.ConfirmationPeriod = 0
 	}

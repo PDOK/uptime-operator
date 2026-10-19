@@ -47,8 +47,9 @@ latter won't cause any error logging.
 
 ### Better Stack confirmation period
 
-By default, Better Stack monitors use a confirmation period of one second longer than
-the nearest supported check interval. This delays incident creation after a failure.
+By default, Better Stack monitors use a confirmation period of 30 seconds longer than
+the nearest supported check interval (90 seconds for a one-minute check). This delays
+incident creation after a failure.
 To disable this delay for a route, add:
 
 ```yaml

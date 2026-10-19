@@ -88,7 +88,7 @@ func TestAgainstREALBetterStackAPI_ConfirmationPeriod(t *testing.T) {
 		{
 			name:                    "Update check with confirmation period enabled",
 			annotations:             annotationsForBetterStackConfirmationEnabled("true"),
-			wantConfirmationPeriod:  61,
+			wantConfirmationPeriod:  90,
 			checkConfirmationPeriod: true,
 		},
 		{
