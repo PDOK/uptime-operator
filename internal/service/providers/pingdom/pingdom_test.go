@@ -93,13 +93,13 @@ func TestAgainstREALPingdomAPI(t *testing.T) {
 			check, err := model.NewUptimeCheck("foo", tt.annotations)
 			assert.NoError(t, err)
 			if tt.wantDelete {
-				if err := m.DeleteCheck(context.TODO(), *check); (err != nil) != tt.wantErr {
+				if err := m.DeleteCheck(context.TODO(), check.ID); (err != nil) != tt.wantErr {
 					t.Errorf("DeleteCheck() error = %v, wantErr %v", err, tt.wantErr)
 				}
 				// give pingdom some time to process the api call, just in case
 				time.Sleep(5 * time.Second)
 
-				existingCheckID, err := m.findCheck(context.TODO(), *check)
+				existingCheckID, err := m.findCheck(context.TODO(), check.ID)
 				assert.NoError(t, err)
 				assert.Equal(t, providers.CheckNotFound, existingCheckID)
 			} else {

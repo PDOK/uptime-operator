@@ -50,7 +50,7 @@ func New(settings Settings) *Pingdom {
 
 // CreateOrUpdateCheck create the given check with Pingdom, or update an existing check. Needs to be idempotent!
 func (p *Pingdom) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) (err error) {
-	existingCheckID, err := p.findCheck(ctx, check)
+	existingCheckID, err := p.findCheck(ctx, check.ID)
 	if err != nil {
 		return err
 	}
@@ -63,15 +63,15 @@ func (p *Pingdom) CreateOrUpdateCheck(ctx context.Context, check model.UptimeChe
 }
 
 // DeleteCheck deletes the given check from Pingdom
-func (p *Pingdom) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
-	log.FromContext(ctx).Info("deleting check", "check", check)
+func (p *Pingdom) DeleteCheck(ctx context.Context, checkId string) error {
+	log.FromContext(ctx).Info("deleting check", "check", checkId)
 
-	existingCheckID, err := p.findCheck(ctx, check)
+	existingCheckID, err := p.findCheck(ctx, checkId)
 	if err != nil {
 		return err
 	}
 	if existingCheckID == providers.CheckNotFound {
-		log.FromContext(ctx).Info(fmt.Sprintf("check with ID '%s' is already deleted", check.ID))
+		log.FromContext(ctx).Info(fmt.Sprintf("check with ID '%s' is already deleted", checkId))
 		return nil
 	}
 
@@ -91,7 +91,7 @@ func (p *Pingdom) DeleteCheck(ctx context.Context, check model.UptimeCheck) erro
 	return nil
 }
 
-func (p *Pingdom) findCheck(ctx context.Context, check model.UptimeCheck) (int64, error) {
+func (p *Pingdom) findCheck(ctx context.Context, checkId string) (int64, error) {
 	result := providers.CheckNotFound
 
 	// list all checks managed by uptime-operator. Can be at most 25.000, which is probably sufficient.
@@ -128,7 +128,7 @@ func (p *Pingdom) findCheck(ctx context.Context, check model.UptimeCheck) (int64
 				continue
 			}
 			tagName := tag["name"].(string)
-			if strings.HasSuffix(tagName, check.ID) {
+			if strings.HasSuffix(tagName, checkId) {
 				// bingo, we've found the Pingdom check based on our custom ID (check.ID which is stored in a Pingdom tag).
 				// now we return the actual Pingdom ID which we need for updates/deletes/etc.
 				pingdomCheckID := pingdomCheck["id"]
