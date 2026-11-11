@@ -18,7 +18,7 @@ type UptimeProvider interface {
 	CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck) error
 
 	// DeleteCheck deletes the given check from the uptime monitoring provider
-	DeleteCheck(ctx context.Context, checkId string) error
+	DeleteCheck(ctx context.Context, checkID string) error
 }
 
 func GetUptimeProviderSettings(providerFlags util.ProviderFlags) (providers.UptimeProviderID, any) {

@@ -36,7 +36,7 @@ func WithProvider(provider UptimeProvider) UptimeCheckOption {
 	}
 }
 
-func GetProviderFromIdAndSettings(provider p.UptimeProviderID, settings any) UptimeProvider {
+func GetProviderFromIDAndSettings(provider p.UptimeProviderID, settings any) UptimeProvider {
 	switch provider {
 	case p.ProviderMock:
 		return mock.New()
@@ -53,7 +53,7 @@ func GetProviderFromIdAndSettings(provider p.UptimeProviderID, settings any) Upt
 
 func WithProviderAndSettings(provider p.UptimeProviderID, settings any) UptimeCheckOption {
 	return func(service *UptimeCheckService) *UptimeCheckService {
-		uptimeProvider := GetProviderFromIdAndSettings(provider, settings)
+		uptimeProvider := GetProviderFromIDAndSettings(provider, settings)
 		service.provider = uptimeProvider
 		return service
 	}

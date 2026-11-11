@@ -60,8 +60,8 @@ func (m *testUptimeProvider) CreateOrUpdateCheck(_ context.Context, check m.Upti
 	return nil
 }
 
-func (m *testUptimeProvider) DeleteCheck(_ context.Context, checkId string) error {
-	delete(m.checks, checkId)
+func (m *testUptimeProvider) DeleteCheck(_ context.Context, checkID string) error {
+	delete(m.checks, checkID)
 	return nil
 }
 

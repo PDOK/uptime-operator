@@ -34,9 +34,9 @@ func main() {
 	}
 
 	uptimeProviderID, uptimeProviderSettings := service.GetUptimeProviderSettings(*providerFlags)
-	provider := service.GetProviderFromIdAndSettings(uptimeProviderID, uptimeProviderSettings)
+	provider := service.GetProviderFromIDAndSettings(uptimeProviderID, uptimeProviderSettings)
 
-	action := func(context context.Context, command *cli.Command) error {
+	action := func(_ context.Context, _ *cli.Command) error {
 		endpoints := api.Endpoints{
 			UptimeProvider: provider,
 		}

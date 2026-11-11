@@ -111,7 +111,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	uptimeProviderID, uptimeProviderSettings := service.GetUptimeProviderSettings(providerFlags)
+	uptimeProviderID, uptimeProviderSettings := service.GetUptimeProviderSettings(*providerFlags)
 
 	// Setup controller
 	if err = (&controller.IngressRouteReconciler{

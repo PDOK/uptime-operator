@@ -92,29 +92,29 @@ func confirmationPeriodEnabled(annotations map[string]string) (bool, error) {
 }
 
 // DeleteCheck deletes the given check from Better Stack
-func (b *BetterStack) DeleteCheck(ctx context.Context, checkId string) error {
-	log.FromContext(ctx).Info("deleting check", "check", checkId)
+func (b *BetterStack) DeleteCheck(ctx context.Context, checkID string) error {
+	log.FromContext(ctx).Info("deleting check", "check", checkID)
 
-	existingCheckID, err := b.findCheck(checkId)
+	existingCheckID, err := b.findCheck(checkID)
 	if err != nil {
-		return fmt.Errorf("failed to find check %s, error: %w", checkId, err)
+		return fmt.Errorf("failed to find check %s, error: %w", checkID, err)
 	}
 	if existingCheckID == p.CheckNotFound {
-		log.FromContext(ctx).Info(fmt.Sprintf("check with ID '%s' is already deleted", checkId))
+		log.FromContext(ctx).Info(fmt.Sprintf("check with ID '%s' is already deleted", checkID))
 		return nil
 	}
-	if err = b.client.deleteMetadata(checkId, existingCheckID); err != nil {
+	if err = b.client.deleteMetadata(checkID, existingCheckID); err != nil {
 		return fmt.Errorf("failed to delete metadata for check %s (betterstack ID: %d), "+
-			"error: %w", checkId, existingCheckID, err)
+			"error: %w", checkID, existingCheckID, err)
 	}
 	if err = b.client.deleteMonitor(existingCheckID); err != nil {
 		return fmt.Errorf("failed to delete monitor for check %s (betterstack ID: %d), "+
-			"error: %w", checkId, existingCheckID, err)
+			"error: %w", checkID, existingCheckID, err)
 	}
 	return nil
 }
 
-func (b *BetterStack) findCheck(checkId string) (int64, error) {
+func (b *BetterStack) findCheck(checkID string) (int64, error) {
 	result := p.CheckNotFound
 	metadata, err := b.client.listMetadata()
 	if err != nil {
@@ -122,7 +122,7 @@ func (b *BetterStack) findCheck(checkId string) (int64, error) {
 	}
 	for {
 		for _, md := range metadata.Data {
-			if md.Attributes != nil && md.Attributes.Key == checkId {
+			if md.Attributes != nil && md.Attributes.Key == checkID {
 				result, err = strconv.ParseInt(md.Attributes.OwnerID, 10, 64)
 				if err != nil {
 					return result, fmt.Errorf("failed to parse monitor ID %s to integer", md.Attributes.OwnerID)
