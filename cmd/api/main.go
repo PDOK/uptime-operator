@@ -2,21 +2,38 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/PDOK/uptime-operator/internal/api"
 	"github.com/PDOK/uptime-operator/internal/service"
 	"github.com/PDOK/uptime-operator/internal/util"
 	"github.com/gin-gonic/gin"
+	"github.com/peterbourgon/ff"
 	"github.com/urfave/cli/v3"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 func main() {
+	var hostAddress string
+	flag.StringVar(&hostAddress, "metrics-bind-address", ":8080",
+		"The address the metric endpoint binds to.")
 	providerFlags := util.GetProviderFlags()
-	uptimeProviderID, uptimeProviderSettings := service.GetUptimeProviderSettings(providerFlags)
+
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	if err := ff.Parse(flag.CommandLine, os.Args[1:], ff.WithEnvVarNoPrefix()); err != nil {
+		os.Exit(1)
+	}
+
+	uptimeProviderID, uptimeProviderSettings := service.GetUptimeProviderSettings(*providerFlags)
 	provider := service.GetProviderFromIdAndSettings(uptimeProviderID, uptimeProviderSettings)
 
 	action := func(context context.Context, command *cli.Command) error {
@@ -26,7 +43,7 @@ func main() {
 
 		router := gin.New()
 		api.AddRoutes(router, endpoints)
-		addr := ":" + strconv.Itoa(8080)
+		addr := hostAddress
 		server := http.Server{
 			Addr:    addr,
 			Handler: router,

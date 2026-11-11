@@ -16,7 +16,7 @@ func (sf *SliceFlag) Set(value string) error {
 	return nil
 }
 
-func GetProviderFlags() ProviderFlags {
+func GetProviderFlags() *ProviderFlags {
 	result := ProviderFlags{
 		UptimeProvider:             "",
 		PingdomAPIToken:            "",
@@ -40,7 +40,7 @@ func GetProviderFlags() ProviderFlags {
 	flag.StringVar(&result.BetterstackAPIToken, "betterstack-api-token", "",
 		"The API token to authenticate with Better Stack. Only applies when 'uptime-provider' is 'betterstack'")
 
-	return result
+	return &result
 }
 
 type ProviderFlags struct {
