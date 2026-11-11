@@ -45,8 +45,9 @@ func main() {
 		api.AddRoutes(router, endpoints)
 		addr := hostAddress
 		server := http.Server{
-			Addr:    addr,
-			Handler: router,
+			Addr:              addr,
+			Handler:           router,
+			ReadHeaderTimeout: 0,
 		}
 		err := server.ListenAndServe()
 		return err
