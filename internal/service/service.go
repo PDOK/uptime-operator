@@ -36,18 +36,25 @@ func WithProvider(provider UptimeProvider) UptimeCheckOption {
 	}
 }
 
+func GetProviderFromIDAndSettings(provider p.UptimeProviderID, settings any) UptimeProvider {
+	switch provider {
+	case p.ProviderMock:
+		return mock.New()
+	case p.ProviderPingdom:
+		return pingdom.New(settings.(pingdom.Settings))
+	case p.ProviderBetterStack:
+		return betterstack.New(settings.(betterstack.Settings))
+	default:
+		classiclog.Fatalf("unsupported provider specified: %s", provider)
+	}
+	// This will never happen but is required in the program flow
+	return nil
+}
+
 func WithProviderAndSettings(provider p.UptimeProviderID, settings any) UptimeCheckOption {
 	return func(service *UptimeCheckService) *UptimeCheckService {
-		switch provider {
-		case p.ProviderMock:
-			service.provider = mock.New()
-		case p.ProviderPingdom:
-			service.provider = pingdom.New(settings.(pingdom.Settings))
-		case p.ProviderBetterStack:
-			service.provider = betterstack.New(settings.(betterstack.Settings))
-		default:
-			classiclog.Fatalf("unsupported provider specified: %s", provider)
-		}
+		uptimeProvider := GetProviderFromIDAndSettings(provider, settings)
+		service.provider = uptimeProvider
 		return service
 	}
 }
@@ -88,7 +95,7 @@ func (r *UptimeCheckService) Mutate(ctx context.Context, mutation m.Mutation, in
 			r.logDeleteDisabled(ctx, check)
 			return
 		}
-		err = r.provider.DeleteCheck(ctx, *check)
+		err = r.provider.DeleteCheck(ctx, check.ID)
 		r.logMutation(ctx, err, mutation, check)
 	}
 }

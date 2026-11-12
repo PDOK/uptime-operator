@@ -22,9 +22,6 @@ import (
 	"os"
 
 	"github.com/PDOK/uptime-operator/internal/service"
-	p "github.com/PDOK/uptime-operator/internal/service/providers"
-	"github.com/PDOK/uptime-operator/internal/service/providers/betterstack"
-	"github.com/PDOK/uptime-operator/internal/service/providers/pingdom"
 	"github.com/PDOK/uptime-operator/internal/util"
 	"github.com/peterbourgon/ff"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -71,11 +68,6 @@ func main() {
 	var slackChannel string
 	var slackWebhookURL string
 	var enableDeletes bool
-	var uptimeProvider string
-	var pingdomAPIToken string
-	var pingdomAlertUserIDs util.SliceFlag
-	var pingdomAlertIntegrationIDs util.SliceFlag
-	var betterstackAPIToken string
 
 	// Default kubebuilder
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
@@ -99,20 +91,8 @@ func main() {
 		"The Slack Channel ID for posting updates when uptime checks are mutated.")
 	flag.StringVar(&slackWebhookURL, "slack-webhook-url", "",
 		"The webhook URL required to post messages to the given Slack channel.")
-	flag.StringVar(&uptimeProvider, "uptime-provider", "mock",
-		"Name of the (SaaS) uptime monitoring provider to use.")
 
-	// Pingdom specific
-	flag.StringVar(&pingdomAPIToken, "pingdom-api-token", "",
-		"The API token to authenticate with Pingdom. Only applies when 'uptime-provider' is 'pingdom'")
-	flag.Var(&pingdomAlertUserIDs, "pingdom-alert-user-ids",
-		"One or more IDs of Pingdom users to alert. Only applies when 'uptime-provider' is 'pingdom'")
-	flag.Var(&pingdomAlertIntegrationIDs, "pingdom-alert-integration-ids",
-		"One or more IDs of Pingdom integrations (like slack channels) to alert. Only applies when 'uptime-provider' is 'pingdom'")
-
-	// Better Stack specific
-	flag.StringVar(&betterstackAPIToken, "betterstack-api-token", "",
-		"The API token to authenticate with Better Stack. Only applies when 'uptime-provider' is 'betterstack'")
+	providerFlags := util.GetProviderFlags()
 
 	opts := zap.Options{
 		Development: true,
@@ -131,32 +111,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	var uptimeProviderSettings any
-	uptimeProviderID := p.UptimeProviderID(uptimeProvider)
-
-	// Optional provider specific flag handling
-	switch uptimeProviderID { //nolint: exhaustive // no need to handle mock provider
-	case p.ProviderPingdom:
-		alertUserIDs, err := util.StringsToInts(pingdomAlertUserIDs)
-		if err != nil {
-			setupLog.Error(err, "Unable to parse 'pingdom-alert-user-ids' flag")
-			os.Exit(1)
-		}
-		alertIntegrationIDs, err := util.StringsToInts(pingdomAlertIntegrationIDs)
-		if err != nil {
-			setupLog.Error(err, "Unable to parse 'pingdom-alert-integration-ids' flag")
-			os.Exit(1)
-		}
-		uptimeProviderSettings = pingdom.Settings{
-			APIToken:       pingdomAPIToken,
-			UserIDs:        alertUserIDs,
-			IntegrationIDs: alertIntegrationIDs,
-		}
-	case p.ProviderBetterStack:
-		uptimeProviderSettings = betterstack.Settings{
-			APIToken: betterstackAPIToken,
-		}
-	}
+	uptimeProviderID, uptimeProviderSettings := service.GetUptimeProviderSettings(*providerFlags)
 
 	// Setup controller
 	if err = (&controller.IngressRouteReconciler{

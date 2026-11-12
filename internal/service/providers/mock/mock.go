@@ -28,10 +28,10 @@ func (m *Mock) CreateOrUpdateCheck(ctx context.Context, check model.UptimeCheck)
 	return nil
 }
 
-func (m *Mock) DeleteCheck(ctx context.Context, check model.UptimeCheck) error {
-	delete(m.checks, check.ID)
+func (m *Mock) DeleteCheck(ctx context.Context, checkID string) error {
+	delete(m.checks, checkID)
 
-	checkJSON, _ := json.Marshal(check)
+	checkJSON, _ := json.Marshal(checkID)
 	log.FromContext(ctx).Info(fmt.Sprintf("MOCK: deleted check %s\n", checkJSON))
 
 	return nil

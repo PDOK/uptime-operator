@@ -65,7 +65,7 @@ ignore this setting.
 ## Run/usage
 
 ```shell
-go build github.com/PDOK/uptime-operator/cmd -o manager
+go build github.com/PDOK/uptime-operator/cmd/controller -o manager
 ```
 
 or
